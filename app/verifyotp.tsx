@@ -6,6 +6,7 @@ import {
   Dimensions,
   TextInput,
   Image,
+  Keyboard,
 } from "react-native";
 import { TouchableOpacity } from "react-native-gesture-handler";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -25,6 +26,9 @@ const VerifyOtpScreen = () => {
   const [timer, setTimer] = useState(300); // 5 phút (300 giây)
   const [error, setError] = useState<string | null>(null);
   const [isFocused, setIsFocused] = useState(false);
+
+  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+
   // Hàm mô phỏng xác thực OTP (thay thế bằng API thật)
   const verifyOtp = async ({ email, otp }: { email: string; otp: number }) => {
     return new Promise((resolve) => {
@@ -118,7 +122,21 @@ const VerifyOtpScreen = () => {
     const secs = seconds % 60;
     return `${minutes}:${secs < 10 ? `0${secs}` : secs}`;
   };
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener(
+      "keyboardDidShow",
+      () => setKeyboardVisible(true)
+    );
+    const keyboardDidHideListener = Keyboard.addListener(
+      "keyboardDidHide",
+      () => setKeyboardVisible(false)
+    );
 
+    return () => {
+      keyboardDidShowListener.remove();
+      keyboardDidHideListener.remove();
+    };
+  }, []);
   // Đếm ngược thời gian
   useEffect(() => {
     const interval = setInterval(() => {
@@ -158,11 +176,13 @@ const VerifyOtpScreen = () => {
             <Text style={styles.resendText}>Resend OTP</Text>
           </TouchableOpacity>
         </View>
-        <Image
-          style={styles.image}
-          source={require("../assets/forgot-password.png")}
-          resizeMode="contain"
-        />
+        {!isKeyboardVisible && (
+          <Image
+            style={styles.image}
+            source={require("../assets/forgot-password.png")}
+            resizeMode="contain"
+          />
+        )}
       </View>
     </AlertNotificationRoot>
   );

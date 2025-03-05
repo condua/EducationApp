@@ -11,7 +11,6 @@ import {
 } from "react-native";
 import { FontAwesome, Feather } from "@expo/vector-icons";
 import LinearGradient from "react-native-linear-gradient";
-import { router } from "expo-router";
 const categories = ["All", "Graphic Design", "3D Design", "Arts & Humanities"];
 const courses = [
   {
@@ -78,7 +77,7 @@ const HomeScreen = () => {
       {/* Categories */}
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Categories</Text>
-        <TouchableOpacity onPress={() => router.push("/(tabs)/courses")}>
+        <TouchableOpacity>
           <Text style={styles.seeAllText}>See All</Text>
         </TouchableOpacity>
       </View>
@@ -94,14 +93,7 @@ const HomeScreen = () => {
             ]}
             onPress={() => setSelectedCategory(item)}
           >
-            <Text
-              style={[
-                styles.categoryText,
-                selectedCategory === item && styles.categorySelectedText,
-              ]}
-            >
-              {item}
-            </Text>
+            <Text style={styles.categoryText}>{item}</Text>
           </TouchableOpacity>
         )}
         keyExtractor={(item) => item}
@@ -127,7 +119,7 @@ const HomeScreen = () => {
       {/* Mentors */}
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Top Mentors</Text>
-        <TouchableOpacity onPress={() => router.push("/(tabs)/mentors")}>
+        <TouchableOpacity>
           <Text style={styles.seeAllText}>See All</Text>
         </TouchableOpacity>
       </View>
@@ -188,21 +180,13 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 18, fontWeight: "bold" },
   seeAllText: { fontSize: 14, color: "blue" },
   categoryItem: {
-    minWidth: 80,
-    paddingVertical: 10,
-    paddingHorizontal: 20, // Điều chỉnh padding để nút không quá dài
-    borderRadius: 20,
-    backgroundColor: "#f5f5f5",
-    marginHorizontal: 5, // Thay marginRight bằng marginHorizontal để cân đối
-    alignItems: "center", // Căn giữa nội dung
-    justifyContent: "center",
+    padding: 10,
+    backgroundColor: "#EEE",
+    borderRadius: 10,
+    marginRight: 10,
   },
   categoryText: { fontSize: 14 },
-  categorySelectedText: {
-    color: "white",
-    fontWeight: "bold",
-  },
-  selectedCategory: { backgroundColor: "#4CAF50", color: "white" },
+  selectedCategory: { backgroundColor: "cyan", color: "white" },
 
   courseCard: {
     backgroundColor: "#FFF",
