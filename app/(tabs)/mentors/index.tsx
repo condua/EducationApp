@@ -1,212 +1,97 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   View,
   Text,
-  StyleSheet,
-  TextInput,
-  ScrollView,
-  Image,
   FlatList,
+  Image,
   TouchableOpacity,
+  TextInput,
 } from "react-native";
-import { FontAwesome, Feather } from "@expo/vector-icons";
-import LinearGradient from "react-native-linear-gradient";
-const categories = ["All", "Graphic Design", "3D Design", "Arts & Humanities"];
-const courses = [
+import { Ionicons } from "@expo/vector-icons";
+
+const mentors = [
+  { id: "1", name: "Jiya Shetty", category: "3D Design", avatar: "" },
+  { id: "2", name: "Donald S", category: "Arts & Humanities", avatar: "" },
+  { id: "3", name: "Aman", category: "Personal Development", avatar: "" },
+  { id: "4", name: "Vrushab. M", category: "SEO & Marketing", avatar: "" },
   {
-    id: "1",
-    title: "Graphic Design Advanced",
-    price: "850/-",
-    rating: "4.2",
-    students: "7830 Std",
-    category: "Graphic Design",
+    id: "5",
+    name: "Robert William",
+    category: "Office Productivity",
+    avatar: "",
   },
-  {
-    id: "2",
-    title: "Advertisement Design",
-    price: "400/-",
-    rating: "4.0",
-    students: "5000 Std",
-    category: "Graphic Design",
-  },
-  {
-    id: "3",
-    title: "3D Animation",
-    price: "600/-",
-    rating: "4.5",
-    students: "6000 Std",
-    category: "3D Design",
-  },
+  { id: "6", name: "Soman", category: "Web Development", avatar: "" },
 ];
-const mentors = ["Jiya", "Aman", "Rahul.J", "Manav", "Emily", "John"];
 
-const HomeScreen = () => {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("All");
-
-  const filteredCourses = courses.filter(
-    (course) =>
-      (selectedCategory === "All" || course.category === selectedCategory) &&
-      course.title.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
+const MentorListScreen = () => {
   return (
-    <ScrollView style={styles.container}>
+    <View
+      style={{ flex: 1, backgroundColor: "#F8FAFC", paddingHorizontal: 20 }}
+    >
       {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.welcomeText}>Hi, ALEX</Text>
-        <FontAwesome name="bell" size={24} color="black" />
-      </View>
-      <Text style={styles.subText}>What would you like to learn today?</Text>
-      {/* <View style={styles.searchContainer}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search for.."
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
-      </View> */}
-      {/* Advertisement */}
-      <View style={styles.adContainer}>
-        <Text style={styles.adTitle}>25% OFF*</Text>
-        <Text style={styles.adText}>Today's Special</Text>
-        <Text style={styles.adDesc}>
-          Get a Discount for Every Course Order only Valid for Today!
+      {/* <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          marginVertical: 20,
+        }}
+      >
+        <TouchableOpacity>
+          <Ionicons name="arrow-back" size={24} color="black" />
+        </TouchableOpacity>
+        <Text style={{ fontSize: 22, fontWeight: "bold", marginLeft: 16 }}>
+          Top Mentors
         </Text>
-      </View>
-      {/* Categories */}
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Categories</Text>
-        <TouchableOpacity>
-          <Text style={styles.seeAllText}>See All</Text>
+        <TouchableOpacity style={{ marginLeft: "auto" }}>
+          <Ionicons name="search-outline" size={24} color="black" />
         </TouchableOpacity>
-      </View>
-      <FlatList
-        data={categories}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={[
-              styles.categoryItem,
-              selectedCategory === item && styles.selectedCategory,
-            ]}
-            onPress={() => setSelectedCategory(item)}
-          >
-            <Text style={styles.categoryText}>{item}</Text>
-          </TouchableOpacity>
-        )}
-        keyExtractor={(item) => item}
-      />
-      {/* Courses */}
-      <FlatList
-        data={filteredCourses}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={{ paddingTop: 20, paddingBottom: 10 }}
-        renderItem={({ item }) => (
-          <View style={styles.courseCard}>
-            <View style={styles.courseImage}></View>
-            <Text style={styles.courseTitle}>{item.title}</Text>
-            <Text style={styles.coursePrice}>{item.price}</Text>
-            <Text style={styles.courseRating}>
-              {item.rating} ⭐ | {item.students}
-            </Text>
-          </View>
-        )}
-        keyExtractor={(item) => item.id}
-      />
-      {/* Mentors */}
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Top Mentors</Text>
-        <TouchableOpacity>
-          <Text style={styles.seeAllText}>See All</Text>
-        </TouchableOpacity>
-      </View>
+      </View> */}
+
+      {/* Mentor List */}
       <FlatList
         data={mentors}
-        horizontal
-        showsHorizontalScrollIndicator={false}
+        keyExtractor={(item) => item.id}
+        style={{ marginTop: 30 }}
         renderItem={({ item }) => (
-          <View style={styles.mentorCard}>
-            <View style={styles.mentorImage}></View>
-            <Text style={styles.mentorName}>{item}</Text>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              marginBottom: 16,
+            }}
+          >
+            <View
+              style={{
+                width: 50,
+                height: 50,
+                borderRadius: 25,
+                backgroundColor: "black",
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              {item.avatar ? (
+                <Image
+                  source={{ uri: item.avatar }}
+                  style={{ width: 50, height: 50, borderRadius: 25 }}
+                />
+              ) : (
+                <Ionicons name="person" size={24} color="white" />
+              )}
+            </View>
+            <View style={{ marginLeft: 16 }}>
+              <Text style={{ fontSize: 16, fontWeight: "bold" }}>
+                {item.name}
+              </Text>
+              <Text style={{ fontSize: 14, color: "#6B7280" }}>
+                {item.category}
+              </Text>
+            </View>
           </View>
         )}
-        keyExtractor={(item) => item}
       />
-    </ScrollView>
+    </View>
   );
 };
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F8FAFF", padding: 16 },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  welcomeText: { fontSize: 22, fontWeight: "bold" },
-  subText: { fontSize: 14, color: "gray", marginBottom: 10 },
-  searchContainer: {
-    flexDirection: "row",
-    backgroundColor: "#EEE",
-    borderRadius: 10,
-    padding: 10,
-    alignItems: "center",
-  },
-  searchInput: { flex: 1, fontSize: 16 },
-  filterIcon: {
-    backgroundColor: "blue",
-    padding: 8,
-    borderRadius: 8,
-    marginLeft: 10,
-  },
-  adContainer: {
-    padding: 15,
-    backgroundColor: "lightblue",
-    borderRadius: 10,
-    marginVertical: 10,
-  },
-  adTitle: { color: "white", fontSize: 18, fontWeight: "bold" },
-  adText: { color: "white", fontSize: 16 },
-  adDesc: { color: "white", fontSize: 14, marginTop: 5 },
-  sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginVertical: 10,
-  },
-  sectionTitle: { fontSize: 18, fontWeight: "bold" },
-  seeAllText: { fontSize: 14, color: "blue" },
-  categoryItem: {
-    padding: 10,
-    backgroundColor: "#EEE",
-    borderRadius: 10,
-    marginRight: 10,
-  },
-  categoryText: { fontSize: 14 },
-  selectedCategory: { backgroundColor: "cyan", color: "white" },
-
-  courseCard: {
-    backgroundColor: "#FFF",
-    padding: 10,
-    borderRadius: 10,
-    marginRight: 10,
-    width: 150,
-  },
-  courseImage: { height: 80, backgroundColor: "#000", borderRadius: 10 },
-  courseTitle: { fontSize: 14, fontWeight: "bold", marginVertical: 5 },
-  coursePrice: { fontSize: 14, color: "green" },
-  courseRating: { fontSize: 12, color: "gray" },
-  mentorCard: { alignItems: "center", marginRight: 10 },
-  mentorImage: {
-    width: 60,
-    height: 60,
-    backgroundColor: "#000",
-    borderRadius: 30,
-  },
-  mentorName: { fontSize: 14, marginTop: 5 },
-});
-
-export default HomeScreen;
+export default MentorListScreen;

@@ -10,6 +10,8 @@ import {
 } from "react-native";
 import { FontAwesome } from "@expo/vector-icons";
 import { router } from "expo-router";
+import { useDispatch, useSelector } from "react-redux";
+import { RootState } from "@/src/store/store";
 const categories = [
   "All",
   "Graphic Design",
@@ -62,11 +64,13 @@ const coursesData = [
     students: 6800,
   },
 ];
-
+const selectAllCourses = (state: RootState) => state.courses.courses;
 const PopularCoursesScreen = () => {
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [bookmarkedCourses, setBookmarkedCourses] = useState({});
-
+  const dispatch = useDispatch();
+  const coursesData = useSelector(selectAllCourses);
+  console.log(coursesData);
   // Hàm toggle trạng thái bookmark
   const toggleBookmark = (id: string) => {
     setBookmarkedCourses((prev) => ({
@@ -83,7 +87,7 @@ const PopularCoursesScreen = () => {
     )
     .sort(
       (a, b) =>
-        (bookmarkedCourses[b.id] ? 1 : 0) - (bookmarkedCourses[a.id] ? 1 : 0)
+        (bookmarkedCourses[b._id] ? 1 : 0) - (bookmarkedCourses[a._id] ? 1 : 0)
     );
 
   return (
@@ -118,15 +122,29 @@ const PopularCoursesScreen = () => {
       {/* Danh sách khóa học */}
       <FlatList
         data={filteredCourses}
-        keyExtractor={(item) => item.id}
-        style={{ paddingBottom: 50 }}
+        keyExtractor={(item) => item._id}
+        style={{ paddingBottom: 50, marginBottom: 80 }}
         renderItem={({ item }) => (
           <TouchableOpacity
             style={styles.courseCard}
-            onPress={() => router.push("/(tabs)/courses/detail")}
+            onPress={() =>
+              router.push({
+                pathname: "/(tabs)/courses/detail",
+                params: {
+                  id: item._id,
+                  title: item.title,
+                  category: item.category,
+                  price: item.price,
+                  rating: item.rating,
+                  students: item.students,
+                  thumbnail: item.thumbnail,
+                  chapters: JSON.stringify(item.chapters), // Chuyển thành chuỗi JSON
+                },
+              })
+            }
           >
             {/* Ảnh khóa học */}
-            <View style={styles.courseImage} />
+            <Image style={styles.courseImage} src={item.thumbnail} />
             <View style={styles.courseContent}>
               <Text style={styles.categoryLabel}>{item.category}</Text>
               <Text style={styles.courseTitle}>{item.title}</Text>
@@ -137,11 +155,11 @@ const PopularCoursesScreen = () => {
               </View>
               <Text style={styles.price}>{item.price}</Text>
             </View>
-            <TouchableOpacity onPress={() => toggleBookmark(item.id)}>
+            <TouchableOpacity onPress={() => toggleBookmark(item._id)}>
               <FontAwesome
-                name={bookmarkedCourses[item.id] ? "bookmark" : "bookmark-o"}
+                name={bookmarkedCourses[item._id] ? "bookmark" : "bookmark-o"}
                 size={20}
-                color={bookmarkedCourses[item.id] ? "#FFD700" : "#333"}
+                color={bookmarkedCourses[item._id] ? "#FFD700" : "#333"}
                 style={styles.bookmarkIcon}
               />
             </TouchableOpacity>
@@ -153,7 +171,7 @@ const PopularCoursesScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { backgroundColor: "#fff", padding: 10, marginBottom: 50 },
+  container: { backgroundColor: "#fff", padding: 10 },
   categoryContainer: {
     flexDirection: "row",
     marginBottom: 10,

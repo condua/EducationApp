@@ -1,4 +1,5 @@
-import React, { useEffect } from "react";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import React from "react";
 import {
   View,
   Text,
@@ -6,41 +7,91 @@ import {
   Image,
   TouchableOpacity,
   ScrollView,
-  Alert,
   Linking,
 } from "react-native";
 import { WebView } from "react-native-webview";
 
 const LessonScreen = () => {
-  const downloadAndOpenPDF = async () => {
-    // có thể dùng google drive
-    const pdfUrl =
-      "https://firebasestorage.googleapis.com/v0/b/crud-node-firebase-3c5b5.appspot.com/o/Introduction%20to%20algorithms%20by%20Thomas%20H.%20Cormen%2C%20Charles%20E.%20Leiserson%2C%20Ronald%20L.%20Rivest%2C%20Clifford%20Stein%20(z-lib.org).pdf?alt=media&token=3acdf2fa-8001-4d0a-8dd7-e6c5d1b8b921";
+  const router = useRouter();
+  const { lesson, prevLesson, nextLesson, chapters } = useLocalSearchParams();
 
-    Linking.openURL(pdfUrl);
+  const parsedChapters = chapters ? JSON.parse(chapters) : [];
+  const currentLesson = lesson ? JSON.parse(lesson) : null;
+
+  // Tìm vị trí của currentLesson trong chapters
+  let currentChapterIndex = -1;
+  let currentLessonIndex = -1;
+
+  for (let i = 0; i < parsedChapters.length; i++) {
+    const lessonIndex = parsedChapters[i].lessons.findIndex(
+      (l) => l._id === currentLesson?._id
+    );
+    if (lessonIndex !== -1) {
+      currentChapterIndex = i;
+      currentLessonIndex = lessonIndex;
+      break;
+    }
+  }
+
+  // Xác định prevLesson và nextLesson mới
+  let previousLesson = null;
+  let upcomingLesson = null;
+
+  if (currentChapterIndex !== -1 && currentLessonIndex !== -1) {
+    if (currentLessonIndex > 0) {
+      // Lùi lại 1 bài trong cùng chương
+      previousLesson =
+        parsedChapters[currentChapterIndex].lessons[currentLessonIndex - 1];
+    } else if (currentChapterIndex > 0) {
+      // Nếu là bài đầu tiên của chương, lấy bài cuối của chương trước
+      const prevChapter = parsedChapters[currentChapterIndex - 1];
+      previousLesson = prevChapter.lessons[prevChapter.lessons.length - 1];
+    }
+
+    if (
+      currentLessonIndex <
+      parsedChapters[currentChapterIndex].lessons.length - 1
+    ) {
+      // Tiến lên 1 bài trong cùng chương
+      upcomingLesson =
+        parsedChapters[currentChapterIndex].lessons[currentLessonIndex + 1];
+    } else if (currentChapterIndex < parsedChapters.length - 1) {
+      // Nếu là bài cuối của chương, lấy bài đầu của chương tiếp theo
+      const nextChapter = parsedChapters[currentChapterIndex + 1];
+      upcomingLesson = nextChapter.lessons[0];
+    }
+  }
+
+  // Xử lý điều hướng khi nhấn vào bài học trước hoặc sau
+  const goToLesson = (selectedLesson) => {
+    router.push({
+      pathname: "/(tabs)/courses/list",
+      params: {
+        lesson: JSON.stringify(selectedLesson),
+        prevLesson: JSON.stringify(previousLesson),
+        nextLesson: JSON.stringify(upcomingLesson),
+        chapters: JSON.stringify(parsedChapters),
+      },
+    });
   };
 
   return (
     <ScrollView style={styles.container}>
-      <Text style={styles.title}>MOBILE APPS DESIGN</Text>
-
-      <View style={styles.progressContainer}>
-        <Text style={styles.progressText}>Your progress</Text>
+      {/* <View style={styles.progressContainer}>
+        <Text style={styles.progressText}>My progress</Text>
         <Text style={styles.score}>Score: 96.3%</Text>
         <View style={styles.progressBar}>
           <View style={[styles.progressFill, { width: "96%" }]} />
         </View>
-      </View>
+      </View> */}
 
-      <Text style={styles.sectionTitle}>Current lesson</Text>
-      <Text style={styles.lessonTitle}>MOBILE PROTOTYPING</Text>
+      {/* <Text style={styles.sectionTitle}>Current lesson</Text> */}
+      <Text style={styles.lessonTitle}>{currentLesson?.title}</Text>
 
       <View style={styles.videoContainer}>
         <WebView
           style={styles.video}
-          source={{
-            uri: "https://www.youtube.com/embed/VsZQE9rRlnE?modestbranding=1&showinfo=0&controls=1&rel=0",
-          }}
+          source={{ uri: currentLesson?.youtubeUrl }}
           allowsFullscreenVideo
           javaScriptEnabled
           domStorageEnabled
@@ -52,46 +103,61 @@ const LessonScreen = () => {
           source={{ uri: "https://via.placeholder.com/40" }}
           style={styles.instructorImage}
         />
-        {/* <Text style={styles.instructorName}>Lucas Walker</Text>
-        <Text style={styles.lessonDuration}>• 21:50 min</Text> */}
       </View>
 
       <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          style={styles.secondaryButton}
-          onPress={downloadAndOpenPDF}
-        >
-          <Text style={styles.secondaryButtonText}>
-            📎 Additional materials
-          </Text>
+        <TouchableOpacity style={styles.secondaryButton}>
+          <Text style={styles.secondaryButtonText}>📎 PDF lesson material</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.primaryButton}>
           <Text style={styles.primaryButtonText}>Home tasks</Text>
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.sectionTitle}>Next lessons</Text>
-      <View style={styles.lessonItem}>
-        <Text style={styles.lessonName}>9. Design process</Text>
-        <Text style={styles.lessonTime}>14:30 min →</Text>
-      </View>
-      <View style={styles.lessonItem}>
-        <Text style={styles.lessonName}>10. Animation</Text>
-        <Text style={styles.lessonTime}>18:45 min →</Text>
-      </View>
+      {/* Bài giảng trước đó */}
+      {previousLesson && (
+        <>
+          <Text style={styles.sectionTitle}>Previous lesson</Text>
+          <TouchableOpacity
+            style={styles.lessonItem}
+            onPress={() => goToLesson(previousLesson)}
+          >
+            <Text style={styles.lessonName}>{previousLesson.title}</Text>
+            <Text style={styles.lessonTime}>{previousLesson.time} min ←</Text>
+          </TouchableOpacity>
+        </>
+      )}
+
+      {/* Bài giảng tiếp theo */}
+      {upcomingLesson && (
+        <>
+          <Text style={styles.sectionTitle}>Next lesson</Text>
+          <TouchableOpacity
+            style={styles.lessonItem}
+            onPress={() => goToLesson(upcomingLesson)}
+          >
+            <Text style={styles.lessonName}>{upcomingLesson.title}</Text>
+            <Text style={styles.lessonTime}>{upcomingLesson.time} min →</Text>
+          </TouchableOpacity>
+        </>
+      )}
+
       <View style={{ paddingBottom: 30 }}></View>
     </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F8FAFF", padding: 16 },
-  title: { fontSize: 22, fontWeight: "bold", marginBottom: 10 },
+  container: {
+    flex: 1,
+    backgroundColor: "#F8FAFF",
+    padding: 16,
+    overflow: "hidden",
+  },
   progressContainer: {
     backgroundColor: "#E8F0FF",
     padding: 10,
     borderRadius: 10,
-    marginBottom: 15,
   },
   progressText: { fontSize: 14, color: "#555" },
   score: { fontSize: 16, fontWeight: "bold", marginTop: 5 },
@@ -117,8 +183,6 @@ const styles = StyleSheet.create({
     marginVertical: 5,
   },
   instructorImage: { width: 40, height: 40, borderRadius: 20, marginRight: 10 },
-  instructorName: { fontSize: 14, fontWeight: "bold" },
-  lessonDuration: { fontSize: 14, color: "#777" },
   buttonContainer: {
     flexDirection: "row",
     justifyContent: "space-between",

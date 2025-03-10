@@ -22,7 +22,7 @@ export default function CourseLayout() {
       <Stack.Screen
         name="index"
         options={{
-          title: "Home",
+          title: "Mentors",
         }}
       />
     </Stack>

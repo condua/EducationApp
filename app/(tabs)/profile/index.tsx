@@ -10,20 +10,35 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useDispatch } from "react-redux";
-import { logout } from "../../../src/store/authSlice";
+import { useDispatch, useSelector } from "react-redux";
+import { logout } from "@/src/store/authSlice";
+import { updateProfile } from "@/src/slices/profileSlice";
+import { useFocusEffect } from "@react-navigation/native";
+import { useCallback } from "react";
 export default function EditProfileScreen() {
   const router = useRouter();
-  const [passwordVisible, setPasswordVisible] = useState(false);
-  const [name, setName] = useState("Charlotte King");
-  const [phone, setPhone] = useState("+86 689532");
+  // const [passwordVisible, setPasswordVisible] = useState(false);
+  // const [name, setName] = useState("Charlotte King");
+  // const [phone, setPhone] = useState("+86 689532");
   const dispatch = useDispatch();
-
+  const { name, phone, email, avatar } = useSelector((state) => state.profile);
+  const [localName, setLocalName] = useState(name);
+  const [localPhone, setLocalPhone] = useState(phone);
+  const handleUpdate = () => {
+    dispatch(updateProfile({ name: localName, phone: localPhone }));
+    console.log(name);
+  };
   const handleLogout = () => {
     dispatch(logout());
     router.replace("/login");
   };
-
+  // 🔹 Load lại dữ liệu khi màn hình được focus
+  useFocusEffect(
+    useCallback(() => {
+      setLocalName(name);
+      setLocalPhone(phone);
+    }, [name, phone])
+  );
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -32,7 +47,7 @@ export default function EditProfileScreen() {
           <Ionicons name="arrow-back" size={24} color="black" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Edit Profile</Text>
-        <TouchableOpacity>
+        <TouchableOpacity onPress={handleUpdate}>
           <Ionicons name="checkmark" size={24} color="green" />
         </TouchableOpacity>
       </View>
@@ -40,9 +55,7 @@ export default function EditProfileScreen() {
       {/* Avatar */}
       <View style={styles.avatarContainer}>
         <Image
-          source={{
-            uri: "https://img.freepik.com/free-psd/3d-render-avatar-character_23-2150611765.jpg",
-          }}
+          source={{ uri: avatar || "https://example.com/default-avatar.png" }}
           style={styles.avatar}
         />
         <TouchableOpacity style={styles.editIcon}>
@@ -55,21 +68,20 @@ export default function EditProfileScreen() {
         <Text style={styles.label}>Name</Text>
         <TextInput
           style={styles.input}
-          value={name}
-          onChangeText={setName} // Cho phép thay đổi
+          value={localName}
+          onChangeText={(text) => setLocalName(text)}
         />
+
         <Text style={styles.label}>Phone number</Text>
         <TextInput
           style={styles.input}
-          value={phone}
-          onChangeText={setPhone} // Cho phép thay đổi
+          value={localPhone}
+          onChangeText={(text) => setLocalPhone(text)}
         />
+
         <Text style={styles.label}>E-mail address</Text>
-        <TextInput
-          style={styles.input}
-          value="@johnkinggraphics@gmail.com"
-          editable={false}
-        />
+        <TextInput style={styles.input} value={email} editable={false} />
+
         {/* 
         <Text style={styles.label}>User name</Text>
         <TextInput

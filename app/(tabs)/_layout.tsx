@@ -1,6 +1,8 @@
 import { Tabs } from "expo-router";
 import React from "react";
 import { Platform } from "react-native";
+import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
+import Ionicons from "@expo/vector-icons/Ionicons";
 
 import { HapticTab } from "@/components/HapticTab";
 import { IconSymbol } from "@/components/ui/IconSymbol";
@@ -50,7 +52,7 @@ export default function TabLayout() {
         options={{
           title: "Course",
           tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="paperplane.fill" color={color} />
+            <IconSymbol size={28} name="course.fill" color={color} />
           ),
         }}
       />
@@ -59,7 +61,7 @@ export default function TabLayout() {
         options={{
           title: "Mentors",
           tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="paperplane.fill" color={color} />
+            <FontAwesome6 name="person-chalkboard" size={24} color={color} />
           ),
         }}
       />
@@ -69,10 +71,19 @@ export default function TabLayout() {
         options={{
           title: "Profile",
           tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="paperplane.fill" color={color} />
+            <IconSymbol size={28} name="person.fill" color={color} />
           ),
         }}
       />
+      {/* <Tabs.Screen
+        name="tim"
+        options={{
+          title: "Chúc mừng 8/3",
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="rose" size={24} color={color} />
+          ),
+        }}
+      /> */}
     </Tabs>
   );
 }

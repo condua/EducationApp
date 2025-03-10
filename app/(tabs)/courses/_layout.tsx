@@ -32,7 +32,7 @@ export default function CourseLayout() {
       <Stack.Screen
         name="list"
         options={{
-          title: "List",
+          title: "Lesson",
         }}
       />
     </Stack>

@@ -39,7 +39,7 @@ const courses = [
     category: "3D Design",
   },
 ];
-const mentors = ["Jiya", "Aman", "Rahul.J", "Manav", "Emily", "John"];
+const mentors = ["Phúc", "Aman", "Rahul.J", "Manav", "Emily", "John"];
 
 const HomeScreen = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -55,7 +55,7 @@ const HomeScreen = () => {
     <ScrollView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.welcomeText}>Hi, ALEX</Text>
+        <Text style={styles.welcomeText}>Hi, Phan Hoàng Phúc</Text>
         <FontAwesome name="bell" size={24} color="black" />
       </View>
       <Text style={styles.subText}>What would you like to learn today?</Text>

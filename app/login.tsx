@@ -32,7 +32,7 @@ export default function LoginScreen() {
       dispatch(login());
 
       // Điều hướng đến trang Home trong tabs
-      router.replace("/(tabs)/home");
+      router.replace("/(tabs)");
     } catch (error) {
       alert("Login failed. Please check your credentials and try again.");
     }

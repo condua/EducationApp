@@ -8,6 +8,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 
 const sections = [
   {
@@ -57,37 +58,28 @@ const sections = [
 export default function CourseScreen() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
+  const { id, title, category, price, rating, students, thumbnail, chapters } =
+    useLocalSearchParams();
+  console.log(chapters);
+  // ✅ Hàm lọc danh sách bài học theo từ khóa tìm kiếm
+  // ✅ Chuyển `chapters` từ JSON string thành mảng
+  const parsedChapters = chapters ? JSON.parse(chapters) : [];
 
   // ✅ Hàm lọc danh sách bài học theo từ khóa tìm kiếm
-  const filteredSections = sections
-    .map((section) => ({
-      ...section,
-      lessons: section.lessons.filter((lesson) =>
+  const filteredChapters = parsedChapters
+    .map((chapter) => ({
+      ...chapter,
+      lessons: chapter.lessons.filter((lesson) =>
         lesson.title.toLowerCase().includes(searchQuery.toLowerCase())
       ),
     }))
-    .filter((section) => section.lessons.length > 0); // Loại bỏ section rỗng
+    .filter((chapter) => chapter.lessons.length > 0); // Loại bỏ chapters rỗng
+
+  console.log(filteredChapters); // Kiểm tra kết quả sau khi lọc
   return (
     <View
       style={{ flex: 1, backgroundColor: "#F8FAFC", paddingHorizontal: 20 }}
     >
-      {/* Header */}
-      {/* <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          marginVertical: 20,
-        }}
-      >
-        <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color="black" />
-        </TouchableOpacity>
-        <Text style={{ fontSize: 18, fontWeight: "bold", marginLeft: 15 }}>
-          My Courses
-        </Text>
-      </View> */}
-
-      {/* Search Bar */}
       <View
         style={{
           flexDirection: "row",
@@ -111,9 +103,10 @@ export default function CourseScreen() {
 
       {/* Course Sections */}
       <FlatList
-        data={filteredSections}
+        data={filteredChapters}
         keyExtractor={(item) => item.title}
-        renderItem={({ item }) => (
+        showsVerticalScrollIndicator={false} // Ẩn thanh kéo dọc
+        renderItem={({ item, index: chapterIndex }) => (
           <View style={{ marginTop: 20 }}>
             <View
               style={{
@@ -126,75 +119,105 @@ export default function CourseScreen() {
                 {item.title}
               </Text>
               <Text style={{ fontSize: 14, color: "blue" }}>
-                {item.duration}
+                {item.lessons.reduce((sum, lesson) => sum + lesson.time, 0)}{" "}
+                mins
               </Text>
             </View>
-            {item.lessons.map((lesson) => (
-              <TouchableOpacity
-                key={lesson.id}
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  backgroundColor: "white",
-                  padding: 10,
-                  borderRadius: 10,
-                  marginBottom: 5,
-                }}
-                onPress={() => router.push("/(tabs)/courses/list")}
-              >
-                <Text
-                  style={{ fontSize: 16, fontWeight: "bold", marginRight: 10 }}
+            {item.lessons.map((lesson, index) => {
+              const prevLesson =
+                index > 0
+                  ? item.lessons[index - 1]
+                  : filteredChapters[chapterIndex - 1]?.lessons.slice(-1)[0] ||
+                    null;
+
+              const nextLesson =
+                index < item.lessons.length - 1
+                  ? item.lessons[index + 1]
+                  : filteredChapters[chapterIndex + 1]?.lessons[0] || null;
+
+              const prevprevLesson =
+                index > 1
+                  ? item.lessons[index - 2]
+                  : index === 1
+                  ? filteredChapters[chapterIndex - 1]?.lessons.slice(-1)[0] ||
+                    null
+                  : filteredChapters[chapterIndex - 1]?.lessons.slice(
+                      -2,
+                      -1
+                    )[0] || null;
+
+              const nextNextLesson =
+                index < item.lessons.length - 2
+                  ? item.lessons[index + 2]
+                  : index === item.lessons.length - 2
+                  ? filteredChapters[chapterIndex + 1]?.lessons[0] || null
+                  : filteredChapters[chapterIndex + 1]?.lessons[1] || null;
+
+              return (
+                <TouchableOpacity
+                  key={index}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    backgroundColor: "white",
+                    padding: 10,
+                    borderRadius: 10,
+                    marginBottom: 5,
+                  }}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/(tabs)/courses/list",
+                      params: {
+                        lesson: JSON.stringify(lesson),
+                        prevLesson: prevLesson
+                          ? JSON.stringify(prevLesson)
+                          : null,
+                        nextLesson: nextLesson
+                          ? JSON.stringify(nextLesson)
+                          : null,
+                        prevprevLesson: prevprevLesson
+                          ? JSON.stringify(prevprevLesson)
+                          : null,
+                        nextNextLesson: nextNextLesson
+                          ? JSON.stringify(nextNextLesson)
+                          : null,
+                        chapters: chapters,
+                      },
+                    })
+                  }
                 >
-                  {lesson.id.padStart(2, "0")}
-                </Text>
-                <View style={{ flex: 1 }}>
-                  <Text numberOfLines={1} style={{ fontSize: 16 }}>
-                    {lesson.title}
+                  <Text
+                    style={{
+                      fontSize: 16,
+                      fontWeight: "bold",
+                      marginRight: 10,
+                    }}
+                  >
+                    {index >= 9 ? index + 1 : "0" + (index + 1)}
                   </Text>
-                  <Text style={{ fontSize: 14, color: "gray" }}>
-                    {lesson.time}
-                  </Text>
-                </View>
-                {lesson.locked ? (
-                  <Ionicons name="lock-closed" size={20} color="gray" />
-                ) : (
-                  <Ionicons
-                    name="chevron-forward-circle-outline"
-                    size={20}
-                    color="blue"
-                  />
-                )}
-              </TouchableOpacity>
-            ))}
+                  <View style={{ flex: 1 }}>
+                    <Text numberOfLines={1} style={{ fontSize: 16 }}>
+                      {lesson.title}
+                    </Text>
+                    <Text style={{ fontSize: 14, color: "gray" }}>
+                      {lesson.time} Mins
+                    </Text>
+                  </View>
+                  {lesson.locked ? (
+                    <Ionicons name="lock-closed" size={20} color="gray" />
+                  ) : (
+                    <Ionicons
+                      name="chevron-forward-circle-outline"
+                      size={20}
+                      color="blue"
+                    />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
           </View>
         )}
       />
-
-      {/* Continue Button */}
-      {/* <View style={{ position: "absolute", bottom: 20, left: 20, right: 20 }}>
-        <TouchableOpacity
-          style={{
-            backgroundColor: "blue",
-            padding: 15,
-            borderRadius: 30,
-            flexDirection: "row",
-            justifyContent: "center",
-            alignItems: "center",
-          }}
-        >
-          <Text
-            style={{
-              color: "white",
-              fontSize: 16,
-              fontWeight: "bold",
-              marginRight: 10,
-            }}
-          >
-            Continue Courses
-          </Text>
-          <Ionicons name="arrow-forward" size={20} color="white" />
-        </TouchableOpacity>
-      </View> */}
     </View>
   );
 }
