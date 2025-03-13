@@ -7,34 +7,39 @@ import {
   StyleSheet,
   Image,
   Button,
+  Alert,
 } from "react-native";
-import { useDispatch } from "react-redux";
-import { login } from "../src/store/authSlice";
+import { useDispatch, useSelector } from "react-redux";
+import { loginUser } from "../src/store/authSlice";
 import { useRouter, Link, useNavigation } from "expo-router";
 import { Checkbox } from "react-native-paper";
 import { Ionicons, FontAwesome } from "@expo/vector-icons";
+import { RootState } from "@/src/store/store";
 export default function LoginScreen() {
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<any>();
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [secureText, setSecureText] = useState(true);
-  const [checked, setChecked] = useState(false);
+  // // const [checked, setChecked] = useState(false);
+  const { loading, error, isAuthenticated } = useSelector(
+    (state: RootState) => state.auth
+  );
+
   const navigate = useNavigation();
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!email || !password) {
-      alert("Please enter both email and password.");
+      Alert.alert("Error", "Please enter both email and password.");
       return;
     }
 
-    try {
-      // Dispatch login action (giả sử đăng nhập thành công)
-      dispatch(login());
+    // Dispatch action loginUser
+    const result = await dispatch(loginUser({ email, password }));
 
-      // Điều hướng đến trang Home trong tabs
-      router.replace("/(tabs)");
-    } catch (error) {
-      alert("Login failed. Please check your credentials and try again.");
+    if (loginUser.fulfilled.match(result)) {
+      router.replace("/(tabs)"); // Điều hướng đến màn hình chính nếu đăng nhập thành công
+    } else {
+      Alert.alert("Login Failed", result.payload || "An error occurred");
     }
   };
 

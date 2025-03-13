@@ -1,9 +1,9 @@
 import { createSlice } from "@reduxjs/toolkit";
 
 const initialState = {
-  name: "Charlotte King 2",
-  phone: "+86 689532",
-  email: "johnkinggraphics@gmail.com",
+  fullName: "",
+  phone: "",
+  email: "",
   avatar:
     "https://img.freepik.com/free-psd/3d-render-avatar-character_23-2150611765.jpg",
 };

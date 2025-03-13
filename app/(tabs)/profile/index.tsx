@@ -21,12 +21,14 @@ export default function EditProfileScreen() {
   // const [name, setName] = useState("Charlotte King");
   // const [phone, setPhone] = useState("+86 689532");
   const dispatch = useDispatch();
-  const { name, phone, email, avatar } = useSelector((state) => state.profile);
-  const [localName, setLocalName] = useState(name);
+  const { fullName, phone, email, avatar } = useSelector(
+    (state) => state.profile
+  );
+  const [localName, setLocalName] = useState(fullName);
   const [localPhone, setLocalPhone] = useState(phone);
   const handleUpdate = () => {
     dispatch(updateProfile({ name: localName, phone: localPhone }));
-    console.log(name);
+    console.log(fullName);
   };
   const handleLogout = () => {
     dispatch(logout());
@@ -35,9 +37,10 @@ export default function EditProfileScreen() {
   // 🔹 Load lại dữ liệu khi màn hình được focus
   useFocusEffect(
     useCallback(() => {
-      setLocalName(name);
+      setLocalName(fullName);
       setLocalPhone(phone);
-    }, [name, phone])
+      console.log(localName);
+    }, [fullName, phone])
   );
   return (
     <View style={styles.container}>

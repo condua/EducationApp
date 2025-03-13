@@ -33,6 +33,7 @@ function LayoutSelector() {
   const isAuthenticated = useSelector(
     (state: RootState) => state.auth.isAuthenticated
   );
+  console.log(isAuthenticated);
   return isAuthenticated ? <AuthenticatedStack /> : <NoAuthStack />;
 }
 
