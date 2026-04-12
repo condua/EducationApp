@@ -23,7 +23,7 @@ export default function LoginScreen() {
   const [secureText, setSecureText] = useState(true);
   // // const [checked, setChecked] = useState(false);
   const { loading, error, isAuthenticated } = useSelector(
-    (state: RootState) => state.auth
+    (state: RootState) => state.auth,
   );
 
   const navigate = useNavigation();
