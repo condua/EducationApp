@@ -1,47 +1,78 @@
-import React from "react";
-import { Provider, useSelector } from "react-redux";
+import React, { useEffect } from "react";
+import { Provider, useDispatch, useSelector } from "react-redux";
 import { store, RootState } from "../src/store/store";
-import { Stack } from "expo-router";
+import { Stack, useRouter, useSegments } from "expo-router";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { StyleSheet } from "react-native";
+import { StyleSheet, View, ActivityIndicator } from "react-native";
+import { restoreLogin } from "@/src/store/authSlice";
 
-function AuthenticatedStack() {
+// Tách riêng logic điều hướng để có thể dùng các Hook của Redux và Expo Router
+function RootNavigation() {
+  // Thêm <any> hoặc type AppDispatch tùy theo cấu hình store của bạn để tránh lỗi TypeScript
+  const dispatch = useDispatch<any>();
+  const router = useRouter();
+  const segments = useSegments();
+
+  // Lấy trạng thái đăng nhập từ Redux
+  const { isAuthenticated, isInitialized } = useSelector(
+    (state: RootState) => state.auth,
+  );
+
+  // 1. Đọc token từ máy khi app vừa mở lên
+  useEffect(() => {
+    dispatch(restoreLogin());
+  }, [dispatch]);
+
+  // 2. Tự động điều hướng dựa trên trạng thái đăng nhập
+  useEffect(() => {
+    // Chờ quá trình check token hoàn tất mới chạy tiếp
+    if (!isInitialized) return;
+
+    // Khai báo các màn hình thuộc nhóm Chưa Đăng Nhập
+    const inAuthGroup =
+      segments[0] === "login" ||
+      segments[0] === "register" ||
+      segments[0] === "forgot-password" ||
+      segments[0] === "sendemail" ||
+      segments[0] === "verifyotp";
+
+    if (!isAuthenticated && !inAuthGroup) {
+      // Nếu chưa đăng nhập mà vào màn hình chính -> Đá về trang đăng nhập
+      router.replace("/login");
+    } else if (isAuthenticated && inAuthGroup) {
+      // Nếu đã đăng nhập mà lại vào trang đăng nhập/đăng ký -> Đẩy thẳng vào app
+      router.replace("/(tabs)");
+    }
+  }, [isAuthenticated, isInitialized, segments, router]);
+
+  // 3. Màn hình chờ trong vài mili-giây lúc app đang đọc token
+  if (!isInitialized) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color="#007AFF" />
+      </View>
+    );
+  }
+
+  // 4. Render một Stack DUY NHẤT khai báo mọi màn hình
   return (
     <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      {/* <Stack.Screen
-        name="/courses"
-        options={{ headerShown: false, title: "aaa" }}
-      /> */}
+      <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="login" />
+      <Stack.Screen name="register" />
+      <Stack.Screen name="forgot-password" />
+      <Stack.Screen name="sendemail" />
+      <Stack.Screen name="verifyotp" />
     </Stack>
   );
 }
 
-function NoAuthStack() {
-  return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="login" options={{ headerShown: false }} />
-      <Stack.Screen name="register" options={{ headerShown: false }} />
-      <Stack.Screen name="forgot-password" options={{ headerShown: false }} />
-      <Stack.Screen name="sendemail" options={{ headerShown: false }} />
-      <Stack.Screen name="verifyotp" options={{ headerShown: false }} />
-    </Stack>
-  );
-}
-
-function LayoutSelector() {
-  const isAuthenticated = useSelector(
-    (state: RootState) => state.auth.isAuthenticated
-  );
-  console.log(isAuthenticated);
-  return isAuthenticated ? <AuthenticatedStack /> : <NoAuthStack />;
-}
-
+// Layout gốc bọc toàn bộ ứng dụng
 export default function Layout() {
   return (
     <Provider store={store}>
       <GestureHandlerRootView style={styles.container}>
-        <LayoutSelector />
+        <RootNavigation />
       </GestureHandlerRootView>
     </Provider>
   );
@@ -50,5 +81,10 @@ export default function Layout() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  loadingContainer: {
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#F5F7FA", // Màu nền hợp với app của bạn
   },
 });
