@@ -140,7 +140,15 @@ export default function TestOverviewScreen() {
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: 40 }}
             renderItem={({ item, index }) => (
-              <View style={styles.attemptCard}>
+              <TouchableOpacity
+                style={styles.attemptCard}
+                onPress={() => {
+                  router.push({
+                    pathname: "/(tabs)/courses/attemptDetail",
+                    params: { attemptId: item._id },
+                  });
+                }}
+              >
                 <View style={styles.attemptHeader}>
                   <Text style={styles.attemptIndex}>
                     Lần {myAttemptsForCurrentTest.length - index}
@@ -178,7 +186,7 @@ export default function TestOverviewScreen() {
                     </Text>
                   </View>
                 </View>
-              </View>
+              </TouchableOpacity>
             )}
             ListEmptyComponent={
               <View style={styles.emptyBox}>

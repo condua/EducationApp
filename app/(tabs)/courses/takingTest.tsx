@@ -12,25 +12,31 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useDispatch, useSelector } from "react-redux";
+import { submitTest } from "@/src/slices/testSlice";
+import { RootState } from "@/src/store/store";
 
 const PRIMARY_COLOR = "#4F46E5";
 
 export default function TakingTestScreen() {
   const router = useRouter();
+  const dispatch = useDispatch<any>();
 
   // Lấy dữ liệu bài test truyền từ màn hình trước
   const { testData } = useLocalSearchParams();
   const test = testData ? JSON.parse(testData as string) : null;
 
-  // States
+  const { submitLoading } = useSelector((state: RootState) => state.test);
+
   const [answers, setAnswers] = useState<{ [key: string]: number }>({});
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
-  const [isReady, setIsReady] = useState(false); // Trạng thái sẵn sàng render UI
+  const [startTime, setStartTime] = useState<string>("");
+  const [isReady, setIsReady] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
 
-  // Key để lưu AsyncStorage (Dựa vào ID bài test để không bị nhầm lẫn)
   const STORAGE_KEY = `@test_progress_${test?._id}`;
   const END_TIME_KEY = `@test_endtime_${test?._id}`;
+  const START_TIME_KEY = `@test_starttime_${test?._id}`;
 
   // 1. KHỞI TẠO BÀI TEST & PHỤC HỒI DỮ LIỆU
   useEffect(() => {
@@ -38,16 +44,21 @@ export default function TakingTestScreen() {
 
     const loadTestProgress = async () => {
       try {
-        // Lấy dữ liệu cũ từ bộ nhớ
         const savedAnswers = await AsyncStorage.getItem(STORAGE_KEY);
         const savedEndTime = await AsyncStorage.getItem(END_TIME_KEY);
+        const savedStartTime = await AsyncStorage.getItem(START_TIME_KEY);
 
-        if (savedAnswers) {
-          setAnswers(JSON.parse(savedAnswers));
+        if (savedAnswers) setAnswers(JSON.parse(savedAnswers));
+
+        if (savedStartTime) {
+          setStartTime(savedStartTime);
+        } else {
+          const nowIso = new Date().toISOString();
+          setStartTime(nowIso);
+          await AsyncStorage.setItem(START_TIME_KEY, nowIso);
         }
 
         if (savedEndTime) {
-          // Đã từng làm -> Tính lại thời gian còn lại
           const endTime = parseInt(savedEndTime, 10);
           const now = Date.now();
           const remaining = Math.floor((endTime - now) / 1000);
@@ -58,7 +69,6 @@ export default function TakingTestScreen() {
             setTimeLeft(remaining);
           }
         } else {
-          // Mới làm lần đầu -> Tạo EndTime mới
           const durationInSeconds = test.durationInMinutes * 60;
           const endTime = Date.now() + durationInSeconds * 1000;
           await AsyncStorage.setItem(END_TIME_KEY, endTime.toString());
@@ -91,7 +101,6 @@ export default function TakingTestScreen() {
     return () => clearInterval(timer);
   }, [timeLeft, isSubmitted]);
 
-  // Hàm fomat thời gian ra dạng MM:SS
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
@@ -105,8 +114,6 @@ export default function TakingTestScreen() {
   ) => {
     const newAnswers = { ...answers, [questionId]: optionIndex };
     setAnswers(newAnswers);
-
-    // Lưu ngay lập tức xuống máy, để out app không bị mất
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newAnswers));
   };
 
@@ -114,8 +121,8 @@ export default function TakingTestScreen() {
   const handleTimeUp = () => {
     if (isSubmitted) return;
     setIsSubmitted(true);
-    Alert.alert("Hết giờ!", "Hệ thống đã tự động nộp bài của bạn.", [
-      { text: "Xem kết quả", onPress: calculateAndFinish },
+    Alert.alert("Hết giờ!", "Hệ thống đang tự động nộp bài của bạn...", [
+      { text: "OK", onPress: submitTestToServer },
     ]);
   };
 
@@ -125,41 +132,68 @@ export default function TakingTestScreen() {
       "Bạn có chắc chắn muốn nộp bài không? Bạn không thể thay đổi sau khi nộp.",
       [
         { text: "Hủy", style: "cancel" },
-        { text: "Nộp bài", onPress: calculateAndFinish },
+        { text: "Nộp bài", onPress: submitTestToServer },
       ],
     );
   };
 
-  const calculateAndFinish = async () => {
+  // --- 🔥 BẢN VÁ LỖI NỘP BÀI 🔥 ---
+  const submitTestToServer = async () => {
     setIsSubmitted(true);
 
-    let score = 0;
-    let totalQuestions = 0;
+    // 1. Trích xuất TOÀN BỘ câu hỏi trong bài test
+    const allQuestions = test.questionGroups.flatMap(
+      (group: any) => group.group_questions,
+    );
 
-    // Chấm điểm
-    test.questionGroups.forEach((group: any) => {
-      group.group_questions.forEach((q: any) => {
-        totalQuestions++;
-        if (answers[q._id] === q.correctAnswer) {
-          score++;
-        }
-      });
+    // 2. Map qua tất cả các câu hỏi
+    const formattedAnswers = allQuestions.map((q: any) => {
+      const qId = q.id || q._id; // Ưu tiên q.id giống DB
+      return {
+        questionId: qId,
+        // Nếu học sinh bỏ trống (chưa chọn), ta gửi -1 thay vì gửi mảng rỗng.
+        // Server sẽ nhận được con số -1, KHÔNG BỊ LỖI NULL, và tự động chấm câu này là Sai.
+        selectedAnswer: answers[qId] !== undefined ? answers[qId] : -1,
+      };
     });
 
-    // Xóa dữ liệu tạm thời
-    await AsyncStorage.removeItem(STORAGE_KEY);
-    await AsyncStorage.removeItem(END_TIME_KEY);
+    const payload = {
+      testId: test._id,
+      userAnswers: formattedAnswers,
+      startedAt: startTime,
+    };
 
-    // TODO: Bắn API nộp bài lên Server ở đây nếu có
+    try {
+      const resultAction = await dispatch(submitTest(payload)).unwrap();
 
-    Alert.alert(
-      "Kết quả",
-      `Bạn đã đúng ${score}/${totalQuestions} câu!\n\nNhấn OK để quay về trang chi tiết.`,
-      [{ text: "OK", onPress: () => router.back() }],
-    );
+      // Nộp thành công thì xóa cache đi
+      await AsyncStorage.removeItem(STORAGE_KEY);
+      await AsyncStorage.removeItem(END_TIME_KEY);
+      await AsyncStorage.removeItem(START_TIME_KEY);
+
+      Alert.alert(
+        "Nộp bài thành công!",
+        `Bạn đạt được ${resultAction.score}/100 điểm.`,
+        [
+          {
+            text: "Xem chi tiết",
+            onPress: () => {
+              router.push({
+                pathname: "/(tabs)/courses/attemptDetail",
+                params: {
+                  attemptId: resultAction.attemptId, // Truyền ID lượt làm bài để lấy chi tiết sau này
+                },
+              });
+            },
+          },
+        ],
+      );
+    } catch (error: any) {
+      setIsSubmitted(false); // Cho nộp lại nếu mạng chập chờn
+      Alert.alert("Lỗi", "Không thể nộp bài: " + error);
+    }
   };
 
-  // Nếu chưa lấy xong AsyncStorage thì hiện loading
   if (!isReady || !test) {
     return (
       <View style={styles.centerContainer}>
@@ -171,9 +205,11 @@ export default function TakingTestScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      {/* HEADER: Tiêu đề & Đồng hồ cố định ở trên cùng */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          disabled={submitLoading}
+        >
           <Ionicons name="close" size={28} color="#111827" />
         </TouchableOpacity>
         <View style={{ flex: 1, paddingHorizontal: 10 }}>
@@ -189,7 +225,6 @@ export default function TakingTestScreen() {
         </View>
       </View>
 
-      {/* BODY: Danh sách câu hỏi */}
       <ScrollView
         style={styles.container}
         contentContainerStyle={{ paddingBottom: 100 }}
@@ -205,72 +240,84 @@ export default function TakingTestScreen() {
               <Text style={styles.groupInstruction}>{group.instructions}</Text>
             )}
 
-            {/* Nếu có đoạn văn đọc hiểu */}
             {group.passage && (
               <View style={styles.passageBox}>
                 <Text style={styles.passageText}>{group.passage}</Text>
               </View>
             )}
 
-            {/* Các câu hỏi trong nhóm */}
-            {group.group_questions.map((q: any, qIndex: number) => (
-              <View key={q._id || qIndex} style={styles.questionBox}>
-                <Text style={styles.questionText}>
-                  <Text style={{ fontWeight: "bold" }}>Câu {qIndex + 1}: </Text>
-                  {q.question}
-                </Text>
+            {group.group_questions.map((q: any, qIndex: number) => {
+              const currentQuestionId = q.id || q._id;
 
-                {q.options.map((option: string, optIndex: number) => {
-                  const isSelected = answers[q._id] === optIndex;
+              return (
+                <View
+                  key={currentQuestionId || qIndex}
+                  style={styles.questionBox}
+                >
+                  <Text style={styles.questionText}>
+                    <Text style={{ fontWeight: "bold" }}>
+                      Câu {qIndex + 1}:{" "}
+                    </Text>
+                    {q.question}
+                  </Text>
 
-                  return (
-                    <TouchableOpacity
-                      key={optIndex}
-                      style={[
-                        styles.optionButton,
-                        isSelected && styles.optionButtonSelected,
-                      ]}
-                      onPress={() => handleSelectAnswer(q._id, optIndex)}
-                      disabled={isSubmitted}
-                    >
-                      <View
+                  {q.options.map((option: string, optIndex: number) => {
+                    const isSelected = answers[currentQuestionId] === optIndex;
+
+                    return (
+                      <TouchableOpacity
+                        key={optIndex}
                         style={[
-                          styles.radioCircle,
-                          isSelected && styles.radioCircleSelected,
+                          styles.optionButton,
+                          isSelected && styles.optionButtonSelected,
                         ]}
+                        onPress={() =>
+                          handleSelectAnswer(currentQuestionId, optIndex)
+                        }
+                        disabled={isSubmitted || submitLoading}
                       >
-                        {isSelected && <View style={styles.radioDot} />}
-                      </View>
-                      <Text
-                        style={[
-                          styles.optionText,
-                          isSelected && styles.optionTextSelected,
-                        ]}
-                      >
-                        {option}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            ))}
+                        <View
+                          style={[
+                            styles.radioCircle,
+                            isSelected && styles.radioCircleSelected,
+                          ]}
+                        >
+                          {isSelected && <View style={styles.radioDot} />}
+                        </View>
+                        <Text
+                          style={[
+                            styles.optionText,
+                            isSelected && styles.optionTextSelected,
+                          ]}
+                        >
+                          {option}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              );
+            })}
           </View>
         ))}
       </ScrollView>
 
-      {/* FOOTER: Nút nộp bài */}
       <View style={styles.footer}>
         <TouchableOpacity
           style={[
             styles.submitButton,
-            isSubmitted && { backgroundColor: "gray" },
+            (isSubmitted || submitLoading) && { backgroundColor: "gray" },
           ]}
           onPress={confirmSubmit}
-          disabled={isSubmitted}
+          disabled={isSubmitted || submitLoading}
         >
-          <Text style={styles.submitButtonText}>
-            {isSubmitted ? "Đã nộp bài" : "Nộp bài"}
-          </Text>
+          {submitLoading ? (
+            <ActivityIndicator color="#FFF" />
+          ) : (
+            <Text style={styles.submitButtonText}>
+              {isSubmitted ? "Đang xử lý..." : "Nộp bài"}
+            </Text>
+          )}
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -309,7 +356,6 @@ const styles = StyleSheet.create({
     color: "#EF4444",
     marginLeft: 4,
   },
-
   container: { padding: 16 },
   testDescription: {
     fontSize: 14,
@@ -317,7 +363,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     fontStyle: "italic",
   },
-
   groupContainer: { marginBottom: 24 },
   groupTitle: {
     fontSize: 18,
@@ -333,7 +378,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   passageText: { fontSize: 15, lineHeight: 24, color: "#374151" },
-
   questionBox: {
     backgroundColor: "#FFF",
     padding: 16,
@@ -348,7 +392,6 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     marginBottom: 12,
   },
-
   optionButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -383,7 +426,6 @@ const styles = StyleSheet.create({
   },
   optionText: { fontSize: 15, color: "#374151", flex: 1 },
   optionTextSelected: { color: PRIMARY_COLOR, fontWeight: "600" },
-
   footer: {
     position: "absolute",
     bottom: 0,
