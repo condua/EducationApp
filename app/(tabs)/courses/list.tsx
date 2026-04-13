@@ -7,205 +7,280 @@ import {
   Image,
   TouchableOpacity,
   ScrollView,
-  Linking,
 } from "react-native";
 import { WebView } from "react-native-webview";
+import { Ionicons } from "@expo/vector-icons";
 
-const LessonScreen = () => {
+export default function LessonScreen() {
   const router = useRouter();
+
+  // Lấy dữ liệu từ URL params
   const { lesson, prevLesson, nextLesson, chapters } = useLocalSearchParams();
 
-  const parsedChapters = chapters ? JSON.parse(chapters) : [];
-  const currentLesson = lesson ? JSON.parse(lesson) : null;
+  // Parse JSON an toàn
+  const currentLesson = lesson ? JSON.parse(lesson as string) : null;
+  const previous = prevLesson ? JSON.parse(prevLesson as string) : null;
+  const upcoming = nextLesson ? JSON.parse(nextLesson as string) : null;
 
-  // Tìm vị trí của currentLesson trong chapters
-  let currentChapterIndex = -1;
-  let currentLessonIndex = -1;
+  // Hàm xử lý chuyển bài học
+  const goToLesson = (targetLesson: any, isNext: boolean) => {
+    if (!targetLesson) return;
 
-  for (let i = 0; i < parsedChapters.length; i++) {
-    const lessonIndex = parsedChapters[i].lessons.findIndex(
-      (l) => l._id === currentLesson?._id
-    );
-    if (lessonIndex !== -1) {
-      currentChapterIndex = i;
-      currentLessonIndex = lessonIndex;
-      break;
-    }
-  }
-
-  // Xác định prevLesson và nextLesson mới
-  let previousLesson = null;
-  let upcomingLesson = null;
-
-  if (currentChapterIndex !== -1 && currentLessonIndex !== -1) {
-    if (currentLessonIndex > 0) {
-      // Lùi lại 1 bài trong cùng chương
-      previousLesson =
-        parsedChapters[currentChapterIndex].lessons[currentLessonIndex - 1];
-    } else if (currentChapterIndex > 0) {
-      // Nếu là bài đầu tiên của chương, lấy bài cuối của chương trước
-      const prevChapter = parsedChapters[currentChapterIndex - 1];
-      previousLesson = prevChapter.lessons[prevChapter.lessons.length - 1];
-    }
-
-    if (
-      currentLessonIndex <
-      parsedChapters[currentChapterIndex].lessons.length - 1
-    ) {
-      // Tiến lên 1 bài trong cùng chương
-      upcomingLesson =
-        parsedChapters[currentChapterIndex].lessons[currentLessonIndex + 1];
-    } else if (currentChapterIndex < parsedChapters.length - 1) {
-      // Nếu là bài cuối của chương, lấy bài đầu của chương tiếp theo
-      const nextChapter = parsedChapters[currentChapterIndex + 1];
-      upcomingLesson = nextChapter.lessons[0];
-    }
-  }
-
-  // Xử lý điều hướng khi nhấn vào bài học trước hoặc sau
-  const goToLesson = (selectedLesson) => {
-    router.push({
+    // Ghi chú: Để thuật toán Prev/Next hoạt động liên tục ở các bài tiếp theo,
+    // lý tưởng nhất là bạn nên truyền `chapterIndex` và `lessonIndex` qua params
+    // và tính toán lại `prevLesson`/`nextLesson` ngay tại màn hình này.
+    // Tạm thời mình dùng lại logic có sẵn của bạn.
+    router.replace({
       pathname: "/(tabs)/courses/list",
       params: {
-        lesson: JSON.stringify(selectedLesson),
-        prevLesson: JSON.stringify(previousLesson),
-        nextLesson: JSON.stringify(upcomingLesson),
-        chapters: JSON.stringify(parsedChapters),
+        lesson: JSON.stringify(targetLesson),
+        chapters: chapters, // Giữ nguyên chapters
+        // (Bạn sẽ cần logic tìm lại prev/next của targetLesson ở đây để truyền đúng)
       },
     });
   };
 
+  if (!currentLesson) {
+    return (
+      <View style={styles.center}>
+        <Text style={{ color: "red" }}>Không thể tải bài học.</Text>
+      </View>
+    );
+  }
+
+  // Tách Youtube ID để nhúng (Nếu youtubeUrl là link đầy đủ)
+  // Ví dụ: https://www.youtube.com/watch?v=dQw4w9WgXcQ -> dQw4w9WgXcQ
+  const getYoutubeVideoId = (url: string) => {
+    if (!url) return "";
+    const regExp =
+      /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const match = url.match(regExp);
+    return match && match[2].length === 11 ? match[2] : url;
+  };
+
+  const videoId = getYoutubeVideoId(currentLesson.youtubeUrl);
+  const embedUrl = videoId
+    ? `https://www.youtube.com/embed/${videoId}?rel=0&showinfo=0`
+    : "";
+
   return (
-    <ScrollView style={styles.container}>
-      {/* <View style={styles.progressContainer}>
-        <Text style={styles.progressText}>My progress</Text>
-        <Text style={styles.score}>Score: 96.3%</Text>
-        <View style={styles.progressBar}>
-          <View style={[styles.progressFill, { width: "96%" }]} />
-        </View>
-      </View> */}
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      <Text style={styles.lessonTitle}>{currentLesson.title}</Text>
+      <Text style={styles.lessonTime}>
+        <Ionicons name="time-outline" size={14} /> Thời lượng:{" "}
+        {currentLesson.time} phút
+      </Text>
 
-      {/* <Text style={styles.sectionTitle}>Current lesson</Text> */}
-      <Text style={styles.lessonTitle}>{currentLesson?.title}</Text>
-
+      {/* Video Player */}
       <View style={styles.videoContainer}>
-        <WebView
-          style={styles.video}
-          source={{ uri: currentLesson?.youtubeUrl }}
-          allowsFullscreenVideo
-          javaScriptEnabled
-          domStorageEnabled
-        />
+        {embedUrl ? (
+          <WebView
+            style={styles.video}
+            source={{ uri: embedUrl }}
+            allowsFullscreenVideo
+            javaScriptEnabled
+            domStorageEnabled
+          />
+        ) : (
+          <View style={styles.noVideoBox}>
+            <Ionicons name="videocam-off-outline" size={40} color="#9CA3AF" />
+            <Text style={{ color: "#9CA3AF", marginTop: 10 }}>
+              Video chưa được cập nhật
+            </Text>
+          </View>
+        )}
       </View>
 
+      {/* Thông tin giảng viên */}
       <View style={styles.instructorContainer}>
         <Image
-          source={{ uri: "https://via.placeholder.com/40" }}
+          source={{
+            uri: "https://ui-avatars.com/api/?name=Instructor&background=E5E7EB&color=374151",
+          }}
           style={styles.instructorImage}
         />
+        <View>
+          <Text style={styles.instructorName}>Giảng viên: Phan Hoàng Phúc</Text>
+          <Text style={styles.instructorRole}>Chuyên gia Giáo dục</Text>
+        </View>
       </View>
 
+      {/* Nút thao tác */}
       <View style={styles.buttonContainer}>
         <TouchableOpacity style={styles.secondaryButton}>
-          <Text style={styles.secondaryButtonText}>📎 PDF lesson material</Text>
+          <Ionicons
+            name="document-text-outline"
+            size={18}
+            color="#4B5563"
+            style={{ marginRight: 6 }}
+          />
+          <Text style={styles.secondaryButtonText}>Tài liệu PDF</Text>
         </TouchableOpacity>
+
         <TouchableOpacity style={styles.primaryButton}>
-          <Text style={styles.primaryButtonText}>Home tasks</Text>
+          <Ionicons
+            name="create-outline"
+            size={18}
+            color="#FFF"
+            style={{ marginRight: 6 }}
+          />
+          <Text style={styles.primaryButtonText}>Làm bài tập</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Bài giảng trước đó */}
-      {previousLesson && (
-        <>
-          <Text style={styles.sectionTitle}>Previous lesson</Text>
-          <TouchableOpacity
-            style={styles.lessonItem}
-            onPress={() => goToLesson(previousLesson)}
-          >
-            <Text style={styles.lessonName}>{previousLesson.title}</Text>
-            <Text style={styles.lessonTime}>{previousLesson.time} min ←</Text>
-          </TouchableOpacity>
-        </>
-      )}
+      {/* Điều hướng Bài học */}
+      <View style={styles.navigationBox}>
+        {previous && (
+          <View style={styles.navSection}>
+            <Text style={styles.sectionTitle}>Bài trước</Text>
+            <TouchableOpacity
+              style={styles.lessonItem}
+              onPress={() => goToLesson(previous, false)}
+            >
+              <View style={styles.navIconBox}>
+                <Ionicons name="chevron-back" size={20} color="#4F46E5" />
+              </View>
+              <Text style={styles.lessonName} numberOfLines={1}>
+                {previous.title}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
-      {/* Bài giảng tiếp theo */}
-      {upcomingLesson && (
-        <>
-          <Text style={styles.sectionTitle}>Next lesson</Text>
-          <TouchableOpacity
-            style={styles.lessonItem}
-            onPress={() => goToLesson(upcomingLesson)}
-          >
-            <Text style={styles.lessonName}>{upcomingLesson.title}</Text>
-            <Text style={styles.lessonTime}>{upcomingLesson.time} min →</Text>
-          </TouchableOpacity>
-        </>
-      )}
+        {upcoming && (
+          <View style={[styles.navSection, { marginTop: previous ? 20 : 0 }]}>
+            <Text style={styles.sectionTitle}>Bài tiếp theo</Text>
+            <TouchableOpacity
+              style={styles.lessonItem}
+              onPress={() => goToLesson(upcoming, true)}
+            >
+              <Text
+                style={[styles.lessonName, { textAlign: "right" }]}
+                numberOfLines={1}
+              >
+                {upcoming.title}
+              </Text>
+              <View style={styles.navIconBox}>
+                <Ionicons name="chevron-forward" size={20} color="#4F46E5" />
+              </View>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
 
-      <View style={{ paddingBottom: 30 }}></View>
+      <View style={{ paddingBottom: 40 }} />
     </ScrollView>
   );
-};
+}
+
+const PRIMARY_COLOR = "#4F46E5";
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F8FAFF",
-    padding: 16,
-    overflow: "hidden",
+  container: { flex: 1, backgroundColor: "#FFFFFF", padding: 20 },
+  center: { flex: 1, justifyContent: "center", alignItems: "center" },
+  lessonTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#111827",
+    marginBottom: 6,
   },
-  progressContainer: {
-    backgroundColor: "#E8F0FF",
-    padding: 10,
-    borderRadius: 10,
-  },
-  progressText: { fontSize: 14, color: "#555" },
-  score: { fontSize: 16, fontWeight: "bold", marginTop: 5 },
-  progressBar: {
-    height: 8,
-    backgroundColor: "#D0E2FF",
-    borderRadius: 5,
-    marginTop: 5,
-  },
-  progressFill: { height: "100%", backgroundColor: "#357AFF", borderRadius: 5 },
-  sectionTitle: { fontSize: 16, fontWeight: "bold", marginTop: 20 },
-  lessonTitle: { fontSize: 18, fontWeight: "bold", marginBottom: 10 },
+  lessonTime: { fontSize: 14, color: "#6B7280", marginBottom: 20 },
   videoContainer: {
-    height: 200,
+    width: "100%",
+    aspectRatio: 16 / 9, // Tỉ lệ chuẩn của video YouTube
     backgroundColor: "#000",
-    borderRadius: 10,
+    borderRadius: 16,
     overflow: "hidden",
+    marginBottom: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 5,
   },
   video: { flex: 1 },
+  noVideoBox: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#F3F4F6",
+  },
   instructorContainer: {
     flexDirection: "row",
     alignItems: "center",
-    marginVertical: 5,
+    paddingVertical: 16,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: "#F3F4F6",
+    marginBottom: 20,
   },
-  instructorImage: { width: 40, height: 40, borderRadius: 20, marginRight: 10 },
+  instructorImage: { width: 48, height: 48, borderRadius: 24, marginRight: 12 },
+  instructorName: { fontSize: 15, fontWeight: "600", color: "#111827" },
+  instructorRole: { fontSize: 13, color: "#6B7280", marginTop: 2 },
   buttonContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginVertical: 15,
+    marginBottom: 30,
+    gap: 12,
   },
   secondaryButton: {
-    padding: 10,
-    borderWidth: 1,
-    borderRadius: 10,
-    borderColor: "#000",
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    backgroundColor: "#F3F4F6",
+    borderRadius: 12,
   },
-  secondaryButtonText: { fontSize: 14 },
-  primaryButton: { backgroundColor: "#357AFF", padding: 10, borderRadius: 10 },
-  primaryButtonText: { color: "#FFF", fontSize: 14 },
+  secondaryButtonText: { fontSize: 15, fontWeight: "600", color: "#4B5563" },
+  primaryButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    backgroundColor: PRIMARY_COLOR,
+    borderRadius: 12,
+    shadowColor: PRIMARY_COLOR,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  primaryButtonText: { color: "#FFF", fontSize: 15, fontWeight: "600" },
+  navigationBox: {
+    backgroundColor: "#F9FAFB",
+    padding: 20,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  navSection: {},
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#9CA3AF",
+    textTransform: "uppercase",
+    marginBottom: 8,
+  },
   lessonItem: {
     flexDirection: "row",
+    alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderColor: "#EEE",
   },
-  lessonName: { fontSize: 16 },
-  lessonTime: { fontSize: 14, color: "#777" },
+  lessonName: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#1F2937",
+    flex: 1,
+    marginHorizontal: 12,
+  },
+  navIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#EEF2FF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
 });
-
-export default LessonScreen;

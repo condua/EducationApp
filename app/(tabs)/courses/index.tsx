@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -7,71 +7,43 @@ import {
   TouchableOpacity,
   StyleSheet,
   Image,
+  ActivityIndicator,
 } from "react-native";
-import { FontAwesome } from "@expo/vector-icons";
+import { FontAwesome, Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useDispatch, useSelector } from "react-redux";
-import { RootState } from "@/src/store/store";
+import { RootState } from "@/src/store/store"; // Đảm bảo đường dẫn store đúng
+import { getAllCourses } from "@/src/slices/courseSlice";
+import { fetchCurrentUser } from "@/src/slices/profileSlice";
+
 const categories = [
-  "All",
-  "Graphic Design",
-  "3D Design",
-  "Arts & Illustration",
+  "Tất cả",
+  "Language",
+  "Chemistry",
   "Programming",
   "Web Development",
-  "SEO & Marketing",
 ];
 
-const coursesData = [
-  {
-    id: "1",
-    category: "Graphic Design",
-    title: "Graphic Design Advanced",
-    price: "7058/-",
-    rating: 4.2,
-    students: 7830,
-  },
-  {
-    id: "2",
-    category: "Graphic Design",
-    title: "Advertisement Design",
-    price: "800/-",
-    rating: 3.9,
-    students: 12680,
-  },
-  {
-    id: "3",
-    category: "Programming",
-    title: "Advanced Programming",
-    price: "599/-",
-    rating: 4.2,
-    students: 990,
-  },
-  {
-    id: "4",
-    category: "Web Development",
-    title: "Web Developer Concepts",
-    price: "499/-",
-    rating: 4.9,
-    students: 14580,
-  },
-  {
-    id: "5",
-    category: "SEO & Marketing",
-    title: "Digital Marketing Course",
-    price: "899/-",
-    rating: 4.5,
-    students: 6800,
-  },
-];
-const selectAllCourses = (state: RootState) => state.courses.courses;
-const PopularCoursesScreen = () => {
-  const [selectedCategory, setSelectedCategory] = useState("All");
-  const [bookmarkedCourses, setBookmarkedCourses] = useState({});
-  const dispatch = useDispatch();
-  const coursesData = useSelector(selectAllCourses);
-  console.log(coursesData);
-  // Hàm toggle trạng thái bookmark
+export default function CoursesIndexScreen() {
+  const dispatch = useDispatch<any>();
+
+  const [activeTab, setActiveTab] = useState<"ALL" | "MY_COURSES">("ALL");
+  const [selectedCategory, setSelectedCategory] = useState("Tất cả");
+  const [bookmarkedCourses, setBookmarkedCourses] = useState<{
+    [key: string]: boolean;
+  }>({});
+
+  const { courses, loadingAll } = useSelector(
+    (state: RootState) => state.course,
+  );
+
+  const { user, enrolledCourses } = useSelector((state: any) => state.profile);
+
+  useEffect(() => {
+    dispatch(getAllCourses());
+    dispatch(fetchCurrentUser());
+  }, [dispatch]);
+
   const toggleBookmark = (id: string) => {
     setBookmarkedCourses((prev) => ({
       ...prev,
@@ -79,149 +51,291 @@ const PopularCoursesScreen = () => {
     }));
   };
 
-  // Lọc khóa học theo danh mục và sắp xếp ưu tiên khóa học được bookmark
-  const filteredCourses = coursesData
-    .filter(
-      (course) =>
-        selectedCategory === "All" || course.category === selectedCategory
-    )
+  const filteredCourses = (courses || [])
+    .filter((course) => {
+      if (activeTab === "MY_COURSES") {
+        const isEnrolled =
+          enrolledCourses && enrolledCourses.includes(course._id);
+        if (!isEnrolled) return false;
+      }
+      const matchCategory =
+        selectedCategory === "Tất cả" ||
+        course.category?.toLowerCase() === selectedCategory.toLowerCase();
+
+      return matchCategory;
+    })
     .sort(
       (a, b) =>
-        (bookmarkedCourses[b._id] ? 1 : 0) - (bookmarkedCourses[a._id] ? 1 : 0)
+        (bookmarkedCourses[b._id] ? 1 : 0) - (bookmarkedCourses[a._id] ? 1 : 0),
     );
 
   return (
     <View style={styles.container}>
-      {/* Thanh danh mục khóa học */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.categoryContainer}
-      >
-        {categories.map((category, index) => (
-          <TouchableOpacity
-            key={index}
+      <View style={styles.tabContainer}>
+        <TouchableOpacity
+          style={[
+            styles.tabButton,
+            activeTab === "ALL" && styles.tabButtonActive,
+          ]}
+          onPress={() => setActiveTab("ALL")}
+        >
+          <Text
             style={[
-              styles.categoryButton,
-              selectedCategory === category && styles.categoryButtonSelected,
+              styles.tabText,
+              activeTab === "ALL" && styles.tabTextActive,
             ]}
-            onPress={() => setSelectedCategory(category)}
           >
-            <Text
-              style={[
-                styles.categoryText,
-                selectedCategory === category && styles.categoryTextSelected,
-              ]}
-            >
-              {category}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+            Khám phá
+          </Text>
+        </TouchableOpacity>
 
-      {/* Danh sách khóa học */}
-      <FlatList
-        data={filteredCourses}
-        keyExtractor={(item) => item._id}
-        style={{ paddingBottom: 50, marginBottom: 80 }}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.courseCard}
-            onPress={() =>
-              router.push({
-                pathname: "/(tabs)/courses/detail",
-                params: {
-                  id: item._id,
-                  title: item.title,
-                  category: item.category,
-                  price: item.price,
-                  rating: item.rating,
-                  students: item.students,
-                  thumbnail: item.thumbnail,
-                  chapters: JSON.stringify(item.chapters), // Chuyển thành chuỗi JSON
-                },
-              })
-            }
+        <TouchableOpacity
+          style={[
+            styles.tabButton,
+            activeTab === "MY_COURSES" && styles.tabButtonActive,
+          ]}
+          onPress={() => setActiveTab("MY_COURSES")}
+        >
+          <Text
+            style={[
+              styles.tabText,
+              activeTab === "MY_COURSES" && styles.tabTextActive,
+            ]}
           >
-            {/* Ảnh khóa học */}
-            <Image style={styles.courseImage} src={item.thumbnail} />
-            <View style={styles.courseContent}>
-              <Text style={styles.categoryLabel}>{item.category}</Text>
-              <Text style={styles.courseTitle}>{item.title}</Text>
-              <View style={styles.courseInfo}>
-                <FontAwesome name="star" size={14} color="#FFD700" />
-                <Text style={styles.rating}>{item.rating}</Text>
-                <Text style={styles.students}>{item.students} Std</Text>
-              </View>
-              <Text style={styles.price}>{item.price}</Text>
-            </View>
-            <TouchableOpacity onPress={() => toggleBookmark(item._id)}>
-              <FontAwesome
-                name={bookmarkedCourses[item._id] ? "bookmark" : "bookmark-o"}
-                size={20}
-                color={bookmarkedCourses[item._id] ? "#FFD700" : "#333"}
-                style={styles.bookmarkIcon}
-              />
+            Khóa học của tôi
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      <View>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.categoryContainer}
+        >
+          {categories.map((category, index) => (
+            <TouchableOpacity
+              key={index}
+              style={[
+                styles.categoryButton,
+                selectedCategory === category && styles.categoryButtonSelected,
+              ]}
+              onPress={() => setSelectedCategory(category)}
+            >
+              <Text
+                style={[
+                  styles.categoryText,
+                  selectedCategory === category && styles.categoryTextSelected,
+                ]}
+              >
+                {category === "Language"
+                  ? "Ngoại ngữ"
+                  : category === "Chemistry"
+                    ? "Hóa học"
+                    : category}
+              </Text>
             </TouchableOpacity>
-          </TouchableOpacity>
-        )}
-      />
+          ))}
+        </ScrollView>
+      </View>
+
+      {loadingAll ? (
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color="#4F46E5" />
+          <Text style={{ marginTop: 10, color: "gray" }}>
+            Đang tải dữ liệu...
+          </Text>
+        </View>
+      ) : (
+        <FlatList
+          data={filteredCourses}
+          keyExtractor={(item) => item._id}
+          style={{ paddingBottom: 50, marginBottom: 10 }}
+          showsVerticalScrollIndicator={false}
+          renderItem={({ item }) => {
+            const isEnrolled =
+              enrolledCourses && enrolledCourses.includes(item._id);
+
+            return (
+              <TouchableOpacity
+                style={styles.courseCard}
+                onPress={() =>
+                  // Điều hướng chuẩn xác dựa theo cấu trúc thư mục của bạn
+                  router.push({
+                    pathname: "/(tabs)/courses/detail",
+                    params: { id: item._id },
+                  })
+                }
+              >
+                <Image
+                  style={styles.courseImage}
+                  source={{ uri: item.thumbnail }}
+                />
+
+                <View style={styles.courseContent}>
+                  <Text style={styles.categoryLabel}>{item.category}</Text>
+                  <Text style={styles.courseTitle} numberOfLines={2}>
+                    {item.title}
+                  </Text>
+
+                  <View style={styles.courseInfo}>
+                    <FontAwesome name="star" size={14} color="#FFD700" />
+                    <Text style={styles.rating}>{item.rating}</Text>
+                    <Text style={styles.students}>
+                      {item.students} Học viên
+                    </Text>
+                  </View>
+
+                  <View style={styles.footerCard}>
+                    <Text style={styles.price}>{item.price}</Text>
+                    {isEnrolled && (
+                      <Text style={styles.enrolledTag}>Đã đăng ký</Text>
+                    )}
+                  </View>
+                </View>
+
+                <TouchableOpacity
+                  onPress={() => toggleBookmark(item._id)}
+                  style={styles.bookmarkWrapper}
+                >
+                  <FontAwesome
+                    name={
+                      bookmarkedCourses[item._id] ? "bookmark" : "bookmark-o"
+                    }
+                    size={24}
+                    color={bookmarkedCourses[item._id] ? "#FFD700" : "#D1D5DB"}
+                  />
+                </TouchableOpacity>
+              </TouchableOpacity>
+            );
+          }}
+          ListEmptyComponent={
+            <View style={{ marginTop: 60, alignItems: "center" }}>
+              <Ionicons name="folder-open-outline" size={60} color="#D1D5DB" />
+              <Text
+                style={{
+                  textAlign: "center",
+                  marginTop: 10,
+                  color: "#6B7280",
+                  fontSize: 16,
+                }}
+              >
+                {activeTab === "MY_COURSES"
+                  ? "Bạn chưa đăng ký khóa học nào trong danh mục này."
+                  : "Không có khóa học nào thuộc danh mục này."}
+              </Text>
+            </View>
+          }
+        />
+      )}
     </View>
   );
-};
+}
+
+const PRIMARY_COLOR = "#4F46E5";
 
 const styles = StyleSheet.create({
-  container: { backgroundColor: "#fff", padding: 10 },
-  categoryContainer: {
+  container: {
+    flex: 1,
+    backgroundColor: "#F9FAFB",
+    paddingHorizontal: 16,
+    paddingTop: 10,
+  },
+  centerContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
+  tabContainer: {
     flexDirection: "row",
-    marginBottom: 10,
+    backgroundColor: "#E5E7EB",
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 16,
+  },
+  tabButton: {
+    flex: 1,
     paddingVertical: 10,
-    zIndex: 1, // Đảm bảo thanh danh mục không che phủ nội dung khác
-    // overflow: "visible",
-  },
-  categoryButton: {
-    minWidth: 100, // Đảm bảo nút không quá nhỏ
-    minHeight: 40, // Đảm bảo đủ chỗ hiển thị chữ
-    paddingVertical: 10,
-    paddingHorizontal: 15, // Điều chỉnh padding để nút không quá dài
-    borderRadius: 20,
-    backgroundColor: "#f5f5f5",
-    marginHorizontal: 5, // Thay marginRight bằng marginHorizontal để cân đối
-    alignItems: "center", // Căn giữa nội dung
-    justifyContent: "center",
-  },
-  categoryButtonSelected: { backgroundColor: "#4CAF50" },
-  categoryText: {
-    fontSize: 13,
-    color: "#333",
-    textAlign: "center",
-  },
-  categoryTextSelected: { color: "#fff", fontWeight: "bold" },
-  courseCard: {
-    flexDirection: "row",
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    padding: 10,
-    marginBottom: 10,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    elevation: 2,
-  },
-  courseImage: {
-    width: 80,
-    height: 80,
-    backgroundColor: "#000",
+    alignItems: "center",
     borderRadius: 8,
   },
-  courseContent: { flex: 1, marginLeft: 10 },
-  categoryLabel: { fontSize: 12, color: "#FF5733", fontWeight: "bold" },
-  courseTitle: { fontSize: 16, fontWeight: "bold", marginVertical: 5 },
-  courseInfo: { flexDirection: "row", alignItems: "center", marginVertical: 3 },
-  rating: { fontSize: 14, color: "#333", marginLeft: 5 },
-  students: { fontSize: 12, color: "#666", marginLeft: 10 },
-  price: { fontSize: 16, fontWeight: "bold", color: "#007BFF" },
-  bookmarkIcon: { alignSelf: "center", marginLeft: 10 },
+  tabButtonActive: {
+    backgroundColor: "#FFFFFF",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  tabText: { fontSize: 15, fontWeight: "600", color: "#6B7280" },
+  tabTextActive: { color: PRIMARY_COLOR },
+  categoryContainer: { flexDirection: "row", marginBottom: 16 },
+  categoryButton: {
+    minWidth: 90,
+    height: 40,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    backgroundColor: "#FFFFFF",
+    marginRight: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  categoryButtonSelected: {
+    backgroundColor: PRIMARY_COLOR,
+    borderColor: PRIMARY_COLOR,
+  },
+  categoryText: { fontSize: 13, color: "#4B5563", fontWeight: "500" },
+  categoryTextSelected: { color: "#FFFFFF", fontWeight: "bold" },
+  courseCard: {
+    flexDirection: "row",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    padding: 12,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: "#F3F4F6",
+  },
+  courseImage: {
+    width: 90,
+    height: 90,
+    backgroundColor: "#E5E7EB",
+    borderRadius: 12,
+  },
+  courseContent: { flex: 1, marginLeft: 16, justifyContent: "center" },
+  categoryLabel: {
+    fontSize: 12,
+    color: PRIMARY_COLOR,
+    fontWeight: "700",
+    marginBottom: 4,
+    textTransform: "uppercase",
+  },
+  courseTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#111827",
+    marginBottom: 6,
+  },
+  courseInfo: { flexDirection: "row", alignItems: "center", marginBottom: 6 },
+  rating: { fontSize: 14, color: "#374151", fontWeight: "600", marginLeft: 4 },
+  students: { fontSize: 12, color: "#6B7280", marginLeft: 12 },
+  footerCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingRight: 10,
+  },
+  price: { fontSize: 15, fontWeight: "bold", color: "#10B981" },
+  enrolledTag: {
+    fontSize: 11,
+    backgroundColor: "#D1FAE5",
+    color: "#065F46",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    fontWeight: "600",
+  },
+  bookmarkWrapper: { padding: 4 },
 });
-
-export default PopularCoursesScreen;

@@ -1,6 +1,5 @@
-import { router, Stack, Tabs } from "expo-router";
+import { router, Stack } from "expo-router";
 import { TouchableOpacity } from "react-native";
-
 import { Ionicons } from "@expo/vector-icons";
 
 export default function CourseLayout() {
@@ -9,30 +8,32 @@ export default function CourseLayout() {
       screenOptions={{
         headerShown: true,
         headerTitleAlign: "center",
-
         headerLeft: () => (
-          <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} style={{ marginLeft: 10 }} />
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={{ padding: 10 }}
+          >
+            <Ionicons name="arrow-back" size={24} color="#333" />
           </TouchableOpacity>
         ),
       }}
     >
       <Stack.Screen
         name="index"
-        options={() => ({
-          title: "Courses",
-        })}
+        options={{
+          title: "Khóa học",
+        }}
       />
       <Stack.Screen
         name="detail"
         options={{
-          title: "My Course",
+          title: "Chi tiết khóa học",
         }}
       />
       <Stack.Screen
         name="list"
         options={{
-          title: "Lesson",
+          title: "Bài học",
         }}
       />
     </Stack>

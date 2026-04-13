@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -8,52 +8,23 @@ import {
   Image,
   FlatList,
   TouchableOpacity,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { FontAwesome, Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
+import { useDispatch, useSelector } from "react-redux";
 
-// Dữ liệu mẫu đã được việt hóa
+// Import action gọi API từ courseSlice của bạn
+
+import { getAllCourses } from "./../../src/slices/courseSlice";
 const categories = [
   "Tất cả",
+  "Language", // Mình đổi tên danh mục để khớp với 'category' từ API của bạn
+  "Chemistry",
   "Lập trình Web",
-  "Lập trình Python",
   "Thiết kế UI/UX",
-  "Ngoại ngữ",
-];
-
-const courses = [
-  {
-    id: "1",
-    title: "Python từ cơ bản đến nâng cao",
-    price: "850.000đ",
-    rating: "4.9",
-    students: "2.1k Học viên",
-    category: "Lập trình Python",
-    image:
-      "https://images.unsplash.com/photo-1526379095098-d400fd0bf935?w=500&q=80",
-  },
-  {
-    id: "2",
-    title: "Lập trình Web Full-Stack",
-    price: "1.200.000đ",
-    rating: "4.8",
-    students: "1.5k Học viên",
-    category: "Lập trình Web",
-    image:
-      "https://images.unsplash.com/photo-1633356122544-f134324a6cee?w=500&q=80",
-  },
-  {
-    id: "3",
-    title: "Thiết kế Đồ họa 3D căn bản",
-    price: "600.000đ",
-    rating: "4.5",
-    students: "850 Học viên",
-    category: "Thiết kế UI/UX",
-    image:
-      "https://images.unsplash.com/photo-1561070791-2526d30994b5?w=500&q=80",
-  },
 ];
 
 const mentors = [
@@ -65,14 +36,35 @@ const mentors = [
 ];
 
 export default function HomeScreen() {
+  const dispatch = useDispatch<any>();
+
+  // Lấy danh sách khóa học và trạng thái loading từ Redux
+  const { courses, loadingAll } = useSelector((state: any) => state.course);
+
+  // (Tùy chọn) Lấy tên người dùng từ profileSlice để lời chào thêm sinh động
+  const { fullName } = useSelector((state: any) => state.profile);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("Tất cả");
 
-  const filteredCourses = courses.filter(
-    (course) =>
-      (selectedCategory === "Tất cả" || course.category === selectedCategory) &&
-      course.title.toLowerCase().includes(searchQuery.toLowerCase()),
-  );
+  // Gọi API lấy dữ liệu ngay khi vào màn hình
+  useEffect(() => {
+    dispatch(getAllCourses());
+  }, [dispatch]);
+
+  // Lọc khóa học dựa theo API trả về (Lưu ý: chuyển text về chữ thường để so sánh chính xác)
+  const filteredCourses =
+    courses?.filter((course: any) => {
+      const matchCategory =
+        selectedCategory === "Tất cả" ||
+        course.category?.toLowerCase() === selectedCategory.toLowerCase();
+
+      const matchSearch = course.title
+        ?.toLowerCase()
+        .includes(searchQuery.toLowerCase());
+
+      return matchCategory && matchSearch;
+    }) || [];
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -85,7 +77,9 @@ export default function HomeScreen() {
         <View style={styles.header}>
           <View>
             <Text style={styles.subText}>Chào buổi sáng,</Text>
-            <Text style={styles.welcomeText}>Phan Hoàng Phúc</Text>
+            <Text style={styles.welcomeText}>
+              {fullName || "Phan Hoàng Phúc"}
+            </Text>
           </View>
           <TouchableOpacity style={styles.bellButton}>
             <FontAwesome name="bell-o" size={22} color="#111827" />
@@ -174,43 +168,71 @@ export default function HomeScreen() {
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Khóa học nổi bật</Text>
         </View>
-        <FlatList
-          data={filteredCourses}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 20 }}
-          renderItem={({ item }) => (
-            <TouchableOpacity style={styles.courseCard} activeOpacity={0.9}>
-              <Image source={{ uri: item.image }} style={styles.courseImage} />
-              <View style={styles.courseInfo}>
-                <Text style={styles.courseCategory}>{item.category}</Text>
-                <Text style={styles.courseTitle} numberOfLines={2}>
-                  {item.title}
-                </Text>
-                <View style={styles.courseFooter}>
-                  <Text style={styles.coursePrice}>{item.price}</Text>
-                  <View style={styles.ratingContainer}>
-                    <Ionicons name="star" size={14} color="#FBBF24" />
-                    <Text style={styles.courseRating}>{item.rating}</Text>
+
+        {/* Hiển thị vòng xoay nếu API đang tải */}
+        {loadingAll ? (
+          <ActivityIndicator
+            size="large"
+            color={PRIMARY_COLOR}
+            style={{ marginVertical: 30 }}
+          />
+        ) : (
+          <FlatList
+            data={filteredCourses}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 20 }}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={styles.courseCard}
+                activeOpacity={0.9}
+                // Điều hướng sang trang chi tiết khóa học
+                onPress={() => router.push(`/course/${item._id}`)}
+              >
+                <Image
+                  source={{ uri: item.thumbnail }}
+                  style={styles.courseImage}
+                />
+                <View style={styles.courseInfo}>
+                  <Text style={styles.courseCategory}>{item.category}</Text>
+                  <Text style={styles.courseTitle} numberOfLines={2}>
+                    {item.title}
+                  </Text>
+                  <View style={styles.courseFooter}>
+                    <Text style={styles.coursePrice}>{item.price}</Text>
+                    <View style={styles.ratingContainer}>
+                      <Ionicons name="star" size={14} color="#FBBF24" />
+                      <Text style={styles.courseRating}>{item.rating}</Text>
+                      {/* Thêm số lượng học viên */}
+                      <Text
+                        style={{
+                          fontSize: 12,
+                          color: "#9CA3AF",
+                          marginLeft: 4,
+                        }}
+                      >
+                        ({item.students})
+                      </Text>
+                    </View>
                   </View>
                 </View>
-              </View>
-            </TouchableOpacity>
-          )}
-          keyExtractor={(item) => item.id}
-          ListEmptyComponent={
-            <Text
-              style={{
-                textAlign: "center",
-                marginTop: 20,
-                color: "gray",
-                marginLeft: 16,
-              }}
-            >
-              Không tìm thấy khóa học nào.
-            </Text>
-          }
-        />
+              </TouchableOpacity>
+            )}
+            keyExtractor={(item) => item._id}
+            ListEmptyComponent={
+              <Text
+                style={{
+                  textAlign: "center",
+                  marginTop: 20,
+                  color: "gray",
+                  marginLeft: 16,
+                }}
+              >
+                Không tìm thấy khóa học nào.
+              </Text>
+            }
+          />
+        )}
 
         {/* Mentors Section */}
         <View style={styles.sectionHeader}>
@@ -371,7 +393,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     borderRadius: 16,
     marginRight: 16,
-    width: 220,
+    width: 240, // Mở rộng nhẹ để hiển thị số lượng học viên đẹp hơn
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.05,
@@ -388,6 +410,7 @@ const styles = StyleSheet.create({
     color: PRIMARY_COLOR,
     fontWeight: "600",
     marginBottom: 4,
+    textTransform: "capitalize", // Cho chữ đẹp hơn
   },
   courseTitle: {
     fontSize: 15,
@@ -403,8 +426,13 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   coursePrice: { fontSize: 16, color: "#10B981", fontWeight: "bold" },
-  ratingContainer: { flexDirection: "row", alignItems: "center", gap: 4 },
-  courseRating: { fontSize: 13, color: "#4B5563", fontWeight: "600" },
+  ratingContainer: { flexDirection: "row", alignItems: "center" },
+  courseRating: {
+    fontSize: 13,
+    color: "#4B5563",
+    fontWeight: "600",
+    marginLeft: 4,
+  },
   mentorCard: { alignItems: "center", marginRight: 20, width: 70 },
   mentorImage: {
     width: 64,
