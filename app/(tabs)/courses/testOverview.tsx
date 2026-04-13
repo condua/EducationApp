@@ -1,4 +1,5 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useCallback } from "react";
+import { useFocusEffect } from "expo-router"; // Thêm import này
 import {
   View,
   Text,
@@ -12,6 +13,7 @@ import { Ionicons, FontAwesome5 } from "@expo/vector-icons";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "@/src/store/store"; // Sửa đường dẫn tuỳ project
 import { fetchMyAttemptsForTest } from "@/src/slices/testSlice"; // Đảm bảo đường dẫn đúng
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const PRIMARY_COLOR = "#4F46E5";
 
@@ -34,11 +36,13 @@ export default function TestOverviewScreen() {
   const testInfo = currentCourse?.tests?.find((t: any) => t._id === testId);
 
   // 3. Gọi API lấy lịch sử làm bài khi vào trang
-  useEffect(() => {
-    if (testId) {
-      dispatch(fetchMyAttemptsForTest(testId as string));
-    }
-  }, [testId, dispatch]);
+  useFocusEffect(
+    useCallback(() => {
+      if (testId) {
+        dispatch(fetchMyAttemptsForTest(testId as string));
+      }
+    }, [testId, dispatch]),
+  );
 
   if (!testInfo) {
     return (
@@ -74,11 +78,26 @@ export default function TestOverviewScreen() {
     const s = seconds % 60;
     return `${m}p ${s}s`;
   };
-
+  // Hàm xử lý quay về trang danh sách khóa học
+  const handleGoBackToCourses = () => {
+    // Điều hướng về màn hình chính của tab courses
+    router.push("/(tabs)/courses");
+  };
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       {/* HEADER TỰ TẠO */}
+      <View style={styles.header}>
+        <TouchableOpacity
+          onPress={handleGoBackToCourses}
+          style={styles.backButton}
+        >
+          <Ionicons name="arrow-back" size={24} color="#111827" />
+        </TouchableOpacity>
 
+        <Text style={styles.headerTitle}>Chi tiết bài tập</Text>
+
+        <View style={styles.headerRight} />
+      </View>
       {/* THÔNG TIN BÀI TEST */}
       <View style={styles.infoCard}>
         <View style={styles.iconWrapper}>
@@ -184,6 +203,9 @@ export default function TestOverviewScreen() {
                         {formatDuration(item.timeTaken)}
                       </Text>
                     </Text>
+                    <Text style={[styles.detailText, { color: "blue" }]}>
+                      👁️ Xem lại bài làm
+                    </Text>
                   </View>
                 </View>
               </TouchableOpacity>
@@ -199,7 +221,7 @@ export default function TestOverviewScreen() {
           />
         )}
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -212,13 +234,23 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingVertical: 12,
     backgroundColor: "#FFF",
     borderBottomWidth: 1,
     borderColor: "#E5E7EB",
   },
-  headerTitle: { fontSize: 18, fontWeight: "bold", color: "#111827" },
-
+  backButton: {
+    padding: 4,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#111827",
+    textAlign: "center",
+  },
+  headerRight: {
+    width: 32, // Để cân bằng với nút back giúp title nằm giữa
+  },
   infoCard: {
     backgroundColor: "#FFF",
     margin: 16,

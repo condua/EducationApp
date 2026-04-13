@@ -21,7 +21,7 @@ export default function CourseLayout() {
       <Stack.Screen
         name="index"
         options={{
-          title: "Khóa học",
+          headerShown: false, // Ẩn header hệ thống
         }}
       />
       <Stack.Screen
@@ -39,7 +39,20 @@ export default function CourseLayout() {
       <Stack.Screen
         name="testOverview"
         options={{
-          title: "Tổng quan bài kiểm tra",
+          headerShown: false, // Ẩn header hệ thống
+        }}
+      />
+      <Stack.Screen
+        name="takingTest"
+        options={{
+          title: "Làm bài kiểm tra",
+        }}
+      />
+      // Trong courses/_layout.tsx
+      <Stack.Screen
+        name="attemptDetail"
+        options={{
+          headerShown: false, // Ẩn header hệ thống
         }}
       />
     </Stack>

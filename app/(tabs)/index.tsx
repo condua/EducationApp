@@ -187,7 +187,7 @@ export default function HomeScreen() {
                 style={styles.courseCard}
                 activeOpacity={0.9}
                 // Điều hướng sang trang chi tiết khóa học
-                onPress={() => router.push(`/course/${item._id}`)}
+                onPress={() => router.push(`/(tabs)/courses`)}
               >
                 <Image
                   source={{ uri: item.thumbnail }}

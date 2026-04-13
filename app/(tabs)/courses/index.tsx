@@ -15,6 +15,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "@/src/store/store"; // Đảm bảo đường dẫn store đúng
 import { getAllCourses } from "@/src/slices/courseSlice";
 import { fetchCurrentUser } from "@/src/slices/profileSlice";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const categories = [
   "Tất cả",
@@ -70,7 +71,17 @@ export default function CoursesIndexScreen() {
     );
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity
+          onPress={() => router.push("/(tabs)")}
+          style={styles.backButton}
+        >
+          <Ionicons name="arrow-back" size={24} color="#111827" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Khóa học</Text>
+        <View style={styles.headerRight} />
+      </View>
       <View style={styles.tabContainer}>
         <TouchableOpacity
           style={[
@@ -228,20 +239,40 @@ export default function CoursesIndexScreen() {
           }
         />
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 
 const PRIMARY_COLOR = "#4F46E5";
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F9FAFB",
-    paddingHorizontal: 16,
-    paddingTop: 10,
-  },
+  container: { flex: 1, backgroundColor: "#F9FAFB" },
+
   centerContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
+  header: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: "#FFF",
+    borderBottomWidth: 1,
+    borderColor: "#E5E7EB",
+    marginBottom: 18,
+  },
+  backButton: {
+    padding: 4,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#111827",
+    textAlign: "center",
+  },
+  headerRight: {
+    width: 32, // Để cân bằng với nút back giúp title nằm giữa
+  },
   tabContainer: {
     flexDirection: "row",
     backgroundColor: "#E5E7EB",

@@ -381,7 +381,7 @@ export default function CourseDetailScreen() {
       />
 
       {/* Footer Nút Đăng Ký */}
-      <View style={styles.footerContainer}>
+      {/* <View style={styles.footerContainer}>
         {isEnrolled ? (
           <TouchableOpacity
             style={[styles.actionButton, { backgroundColor: "#10B981" }]}
@@ -420,7 +420,7 @@ export default function CourseDetailScreen() {
             )}
           </TouchableOpacity>
         )}
-      </View>
+      </View> */}
     </View>
   );
 }

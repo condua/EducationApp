@@ -181,7 +181,7 @@ export default function TakingTestScreen() {
               router.push({
                 pathname: "/(tabs)/courses/attemptDetail",
                 params: {
-                  attemptId: resultAction.attemptId, // Truyền ID lượt làm bài để lấy chi tiết sau này
+                  attemptId: resultAction._id, // ✅ Dùng _id vì MongoDB trả về trường này
                 },
               });
             },

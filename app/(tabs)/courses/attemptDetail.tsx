@@ -16,7 +16,7 @@ import {
   clearCurrentAttempt,
 } from "@/src/slices/testSlice";
 import { SafeAreaView } from "react-native-safe-area-context";
-
+import { HeaderBackButton } from "@react-navigation/elements"; // Cần cài @react-navigation/elements nếu chưa có
 const PRIMARY_COLOR = "#4F46E5";
 
 export default function AttemptDetailScreen() {
@@ -75,6 +75,23 @@ export default function AttemptDetailScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       {/* HEADER */}
+      <View style={styles.header}>
+        <HeaderBackButton
+          tintColor="#333"
+          onPress={() => {
+            // Ép quay về trang Overview để cập nhật lịch sử mới nhất
+            router.replace({
+              pathname: "/(tabs)/courses/testOverview",
+              params: { testId: currentAttempt?.test?._id },
+            });
+          }}
+        />
+
+        <Text style={styles.headerTitle}>{test?.title || ""}</Text>
+
+        {/* Đệm cho cân bằng header */}
+        <View style={{ width: 40 }} />
+      </View>
 
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
         {/* TÓM TẮT ĐIỂM SỐ */}
