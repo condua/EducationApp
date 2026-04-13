@@ -36,6 +36,12 @@ export default function CourseLayout() {
           title: "Bài học",
         }}
       />
+      <Stack.Screen
+        name="testOverview"
+        options={{
+          title: "Tổng quan bài kiểm tra",
+        }}
+      />
     </Stack>
   );
 }

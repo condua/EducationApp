@@ -245,10 +245,10 @@ export default function CourseDetailScreen() {
                   }
                   // Điều hướng tới trang làm bài kiểm tra (Ví dụ: /test/[id])
                   // Thay thế bằng route thực tế của bạn nếu có
-                  Alert.alert(
-                    "Tính năng đang phát triển",
-                    `Vào làm bài: ${test.title}`,
-                  );
+                  router.push({
+                    pathname: "/(tabs)/courses/testOverview", // Đường dẫn tới file bạn vừa tạo
+                    params: { testId: test._id }, // Truyền ID của bài test sang
+                  });
                 }}
               >
                 <View style={styles.testIconWrapper}>
