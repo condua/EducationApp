@@ -119,7 +119,7 @@ export default function HomeScreen() {
 
         {/* Advertisement Banner */}
         <LinearGradient
-          colors={["#4F46E5", "#3B82F6"]}
+          colors={["#bbf7d0", "#4ade80"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.adContainer}
@@ -274,8 +274,12 @@ export default function HomeScreen() {
 }
 
 // Bảng màu chuẩn
-const PRIMARY_COLOR = "#4F46E5";
-const BG_COLOR = "#ffffff";
+const PRIMARY_COLOR = "#86efac"; // xanh lá nhạt (main)
+const PRIMARY_DARK = "#22c55e"; // xanh lá đậm để nhấn
+const BG_COLOR = "#f0fdf4"; // nền xanh rất nhạt
+const CARD_COLOR = "#ffffff"; // giữ trắng cho card
+const TEXT_MAIN = "#065f46"; // xanh đậm cho chữ chính
+const TEXT_SUB = "#4b5563";
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: BG_COLOR },
@@ -291,7 +295,7 @@ const styles = StyleSheet.create({
   welcomeText: {
     fontSize: 24,
     fontWeight: "bold",
-    color: "#111827",
+    color: TEXT_MAIN,
     marginTop: 2,
   },
   bellButton: {
@@ -320,7 +324,7 @@ const styles = StyleSheet.create({
   },
   searchContainer: {
     flexDirection: "row",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#ecfdf5", // xanh nhạt hơn trắng
     borderRadius: 14,
     paddingLeft: 16,
     paddingRight: 6,
@@ -333,12 +337,12 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
     elevation: 2,
     borderWidth: 1,
-    borderColor: "#F3F4F6",
+    borderColor: "#d1fae5",
   },
   searchIcon: { marginRight: 10 },
   searchInput: { flex: 1, fontSize: 15, color: "#111827", height: 40 },
   filterIcon: {
-    backgroundColor: PRIMARY_COLOR,
+    backgroundColor: PRIMARY_DARK,
     padding: 10,
     borderRadius: 10,
     marginLeft: 10,
@@ -358,18 +362,24 @@ const styles = StyleSheet.create({
   },
   adTextContent: { flex: 1, paddingRight: 10 },
   adTitle: {
-    color: "#FCD34D",
+    color: "#16a34a", // xanh lá đậm (nhấn nhẹ)
     fontSize: 14,
     fontWeight: "bold",
     letterSpacing: 1,
   },
+
   adText: {
-    color: "#FFFFFF",
+    color: "#064e3b", // xanh đậm, dễ đọc
     fontSize: 22,
     fontWeight: "bold",
     marginVertical: 6,
   },
-  adDesc: { color: "#E0E7FF", fontSize: 13, lineHeight: 20 },
+
+  adDesc: {
+    color: "#166534", // xanh lá trung tính
+    fontSize: 13,
+    lineHeight: 20,
+  },
   adImage: { width: 90, height: 90, resizeMode: "contain" },
   sectionHeader: {
     flexDirection: "row",
@@ -392,13 +402,13 @@ const styles = StyleSheet.create({
     borderColor: "#E5E7EB",
   },
   selectedCategory: {
-    backgroundColor: PRIMARY_COLOR,
-    borderColor: PRIMARY_COLOR,
+    backgroundColor: PRIMARY_DARK,
+    borderColor: PRIMARY_DARK,
   },
   categoryText: { fontSize: 14, color: "#4B5563", fontWeight: "500" },
   categorySelectedText: { color: "#FFFFFF", fontWeight: "bold" },
   courseCard: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: CARD_COLOR,
     borderRadius: 16,
     marginRight: 16,
     width: 240, // Mở rộng nhẹ để hiển thị số lượng học viên đẹp hơn
@@ -409,7 +419,7 @@ const styles = StyleSheet.create({
     elevation: 3,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: "#F3F4F6",
+    borderColor: "#dcfce7",
   },
   courseImage: { height: 120, width: "100%", backgroundColor: "#E5E7EB" },
   courseInfo: { padding: 14 },
@@ -433,7 +443,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 10,
   },
-  coursePrice: { fontSize: 16, color: "#10B981", fontWeight: "bold" },
+  coursePrice: { fontSize: 16, color: "#16a34a", fontWeight: "bold" },
   ratingContainer: { flexDirection: "row", alignItems: "center" },
   courseRating: {
     fontSize: 13,
@@ -447,7 +457,7 @@ const styles = StyleSheet.create({
     height: 64,
     borderRadius: 32,
     borderWidth: 2,
-    borderColor: "#E0E7FF",
+    borderColor: "#bbf7d0",
     marginBottom: 8,
   },
   mentorName: { fontSize: 14, fontWeight: "600", color: "#111827" },

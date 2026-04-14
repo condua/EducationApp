@@ -10,51 +10,61 @@ import {
   ScrollView,
   Platform,
   Alert,
-  ActivityIndicator, // Đã thêm ActivityIndicator
+  ActivityIndicator,
+  Modal, // Thêm Modal cho chọn giới tính
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useDispatch, useSelector } from "react-redux";
 import { logout } from "@/src/store/authSlice";
-// Đã thay đổi import để sử dụng Thunk kết nối API
 import { updateUserProfileOnServer } from "@/src/slices/profileSlice";
 import { useFocusEffect } from "@react-navigation/native";
 import * as ImagePicker from "expo-image-picker";
+import DateTimePicker from "@react-native-community/datetimepicker"; // Thêm thư viện ngày tháng
 
-// API Backend của bạn
 const API_UPLOAD_URL =
   "https://educationappbackend-4inf.onrender.com/api/upload";
+
+// 🟢 MÀU CHỦ ĐẠO MỚI: Xanh lá nhạt
+const PRIMARY_COLOR = "#34D399";
 
 export default function EditProfileScreen() {
   const router = useRouter();
   const dispatch = useDispatch();
 
-  const { fullName, phone, email, avatar } = useSelector(
-    (state) => state.profile,
-  );
+  const { fullName, phone, email, avatar, gender, birthDate, address } =
+    useSelector((state) => state.profile);
 
   const [localName, setLocalName] = useState(fullName || "");
   const [localPhone, setLocalPhone] = useState(phone || "");
   const [localAvatar, setLocalAvatar] = useState(avatar || "");
 
-  // Thêm state loading để khóa UI trong lúc gọi API
+  // 🟢 THÊM STATE MỚI
+  const [localAddress, setLocalAddress] = useState(address || "");
+  const [localGender, setLocalGender] = useState(gender || "");
+  const [localBirthDate, setLocalBirthDate] = useState(
+    birthDate ? new Date(birthDate) : new Date(),
+  );
+
+  // Trạng thái hiển thị popup
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showGenderModal, setShowGenderModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Load lại dữ liệu khi màn hình được focus
   useFocusEffect(
     useCallback(() => {
       setLocalName(fullName || "");
       setLocalPhone(phone || "");
       setLocalAvatar(avatar || "");
-    }, [fullName, phone, avatar]),
+      setLocalAddress(address || "");
+      setLocalGender(gender || "");
+      if (birthDate) setLocalBirthDate(new Date(birthDate));
+    }, [fullName, phone, avatar, address, gender, birthDate]),
   );
 
-  // Hàm phụ trợ: Đẩy ảnh lên server (Cloudinary)
   const uploadImageToServer = async (imageUri) => {
     const formData = new FormData();
-
-    // Trích xuất tên và định dạng file
     const filename = imageUri.split("/").pop();
     const match = /\.(\w+)$/.exec(filename);
     const type = match ? `image/${match[1]}` : `image/jpeg`;
@@ -68,22 +78,15 @@ export default function EditProfileScreen() {
     const response = await fetch(API_UPLOAD_URL, {
       method: "POST",
       body: formData,
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
+      headers: { "Content-Type": "multipart/form-data" },
     });
 
-    if (!response.ok) {
-      throw new Error("Lỗi kết nối khi upload ảnh lên server.");
-    }
-
+    if (!response.ok) throw new Error("Lỗi kết nối khi upload ảnh lên server.");
     const data = await response.json();
-    return data.imageUrl; // Trả về URL an toàn từ Cloudinary
+    return data.imageUrl;
   };
 
-  // Cập nhật hàm handleUpdate thành bất đồng bộ (async)
   const handleUpdate = async () => {
-    // Basic validation
     if (!localName.trim()) {
       Alert.alert("Lỗi", "Họ và tên không được để trống.");
       return;
@@ -93,17 +96,19 @@ export default function EditProfileScreen() {
       setIsLoading(true);
       let finalAvatarUrl = localAvatar;
 
-      // Nếu chọn ảnh mới từ thư viện máy (ảnh local bắt đầu bằng file://)
       if (localAvatar && !localAvatar.startsWith("http")) {
         finalAvatarUrl = await uploadImageToServer(localAvatar);
       }
 
-      // Gọi Thunk đẩy dữ liệu lên Database
+      // 🟢 Gửi thêm các trường mới lên server
       await dispatch(
         updateUserProfileOnServer({
           fullName: localName,
           phone: localPhone,
           avatar: finalAvatarUrl,
+          address: localAddress,
+          gender: localGender,
+          birthDate: localBirthDate.toISOString(),
         }),
       ).unwrap();
 
@@ -137,7 +142,7 @@ export default function EditProfileScreen() {
   };
 
   const handlePickAvatar = async () => {
-    if (isLoading) return; // Không cho thao tác khi đang loading
+    if (isLoading) return;
 
     const permissionResult =
       await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -157,9 +162,18 @@ export default function EditProfileScreen() {
       quality: 0.8,
     });
 
-    if (!result.canceled) {
-      setLocalAvatar(result.assets[0].uri);
-    }
+    if (!result.canceled) setLocalAvatar(result.assets[0].uri);
+  };
+
+  const onChangeDate = (event, selectedDate) => {
+    const currentDate = selectedDate || localBirthDate;
+    setShowDatePicker(Platform.OS === "ios"); // iOS giữ lịch mở, Android tự đóng
+    setLocalBirthDate(currentDate);
+  };
+
+  const selectGender = (selected) => {
+    setLocalGender(selected);
+    setShowGenderModal(false);
   };
 
   return (
@@ -172,7 +186,7 @@ export default function EditProfileScreen() {
           <TouchableOpacity
             onPress={() => router.back()}
             style={styles.backButton}
-            disabled={isLoading} // Khóa nút back khi đang lưu
+            disabled={isLoading}
           >
             <Ionicons
               name="arrow-back"
@@ -197,7 +211,7 @@ export default function EditProfileScreen() {
                     localAvatar ||
                     "https://ui-avatars.com/api/?name=" +
                       (localName || "User") +
-                      "&background=4F46E5&color=fff",
+                      "&background=34D399&color=fff",
                 }}
                 style={styles.avatar}
               />
@@ -256,7 +270,86 @@ export default function EditProfileScreen() {
               />
             </View>
 
-            <Text style={styles.label}>Địa chỉ Email</Text>
+            {/* 🟢 THÊM: Địa chỉ */}
+            <Text style={styles.label}>Địa chỉ</Text>
+            <View
+              style={[styles.inputWrapper, isLoading && styles.inputDisabled]}
+            >
+              <Ionicons
+                name="location-outline"
+                size={20}
+                color="#6B7280"
+                style={styles.icon}
+              />
+              <TextInput
+                style={styles.input}
+                value={localAddress}
+                onChangeText={setLocalAddress}
+                placeholder="Nhập địa chỉ của bạn"
+                placeholderTextColor="#9CA3AF"
+                editable={!isLoading}
+              />
+            </View>
+
+            {/* 🟢 SỬA: Lịch chọn Ngày sinh */}
+            <Text style={styles.label}>Ngày sinh</Text>
+            <TouchableOpacity
+              style={[styles.inputWrapper, isLoading && styles.inputDisabled]}
+              onPress={() => !isLoading && setShowDatePicker(true)}
+              disabled={isLoading}
+            >
+              <Ionicons
+                name="calendar-outline"
+                size={20}
+                color="#6B7280"
+                style={styles.icon}
+              />
+              <Text
+                style={[styles.input, !localBirthDate && { color: "#9CA3AF" }]}
+              >
+                {localBirthDate
+                  ? localBirthDate.toLocaleDateString("vi-VN")
+                  : "Chọn ngày sinh"}
+              </Text>
+            </TouchableOpacity>
+
+            {showDatePicker && (
+              <DateTimePicker
+                value={localBirthDate || new Date()}
+                mode="date"
+                display={Platform.OS === "ios" ? "spinner" : "default"}
+                onChange={onChangeDate}
+                maximumDate={new Date()} // Không cho chọn ngày tương lai
+              />
+            )}
+
+            {/* 🟢 SỬA: Dropdown Giới tính */}
+            <Text style={styles.label}>Giới tính</Text>
+            <TouchableOpacity
+              style={[styles.inputWrapper, isLoading && styles.inputDisabled]}
+              onPress={() => !isLoading && setShowGenderModal(true)}
+              disabled={isLoading}
+            >
+              <Ionicons
+                name={
+                  localGender === "Nam"
+                    ? "man-outline"
+                    : localGender === "Nữ"
+                      ? "woman-outline"
+                      : "male-female-outline"
+                }
+                size={20}
+                color="#6B7280"
+                style={styles.icon}
+              />
+              <Text
+                style={[styles.input, !localGender && { color: "#9CA3AF" }]}
+              >
+                {localGender || "Chọn giới tính"}
+              </Text>
+              <Ionicons name="chevron-down-outline" size={20} color="#6B7280" />
+            </TouchableOpacity>
+            <Text style={styles.label}>Email</Text>
             <View style={[styles.inputWrapper, styles.inputDisabled]}>
               <Ionicons
                 name="mail-outline"
@@ -305,20 +398,54 @@ export default function EditProfileScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* 🟢 MODAL: Chọn giới tính */}
+      <Modal visible={showGenderModal} transparent={true} animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Chọn giới tính</Text>
+            {["Nam", "Nữ", "Khác"].map((item) => (
+              <TouchableOpacity
+                key={item}
+                style={styles.modalOption}
+                onPress={() => selectGender(item)}
+              >
+                <Text
+                  style={[
+                    styles.modalOptionText,
+                    localGender === item && {
+                      color: PRIMARY_COLOR,
+                      fontWeight: "700",
+                    },
+                  ]}
+                >
+                  {item}
+                </Text>
+                {localGender === item && (
+                  <Ionicons
+                    name="checkmark-circle"
+                    size={24}
+                    color={PRIMARY_COLOR}
+                  />
+                )}
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity
+              style={styles.modalCancel}
+              onPress={() => setShowGenderModal(false)}
+            >
+              <Text style={styles.modalCancelText}>Hủy</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
 
-const PRIMARY_COLOR = "#4F46E5";
-
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: "#FFFFFF",
-  },
-  keyboardView: {
-    flex: 1,
-  },
+  safeArea: { flex: 1, backgroundColor: "#FFFFFF" },
+  keyboardView: { flex: 1 },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -328,32 +455,12 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#F3F4F6",
   },
-  backButton: {
-    width: 40,
-    height: 40,
-    justifyContent: "center",
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#111827",
-  },
-  dummyView: {
-    width: 40,
-  },
-  scrollContainer: {
-    flexGrow: 1,
-    paddingHorizontal: 24,
-    paddingBottom: 40,
-  },
-  avatarContainer: {
-    alignItems: "center",
-    marginTop: 24,
-    marginBottom: 32,
-  },
-  avatarWrapper: {
-    position: "relative",
-  },
+  backButton: { width: 40, height: 40, justifyContent: "center" },
+  headerTitle: { fontSize: 18, fontWeight: "700", color: "#111827" },
+  dummyView: { width: 40 },
+  scrollContainer: { flexGrow: 1, paddingHorizontal: 24, paddingBottom: 40 },
+  avatarContainer: { alignItems: "center", marginTop: 24, marginBottom: 32 },
+  avatarWrapper: { position: "relative" },
   avatar: {
     width: 110,
     height: 110,
@@ -379,15 +486,8 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  formContainer: {
-    width: "100%",
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#374151",
-    marginBottom: 8,
-  },
+  formContainer: { width: "100%" },
+  label: { fontSize: 14, fontWeight: "600", color: "#374151", marginBottom: 8 },
   inputWrapper: {
     flexDirection: "row",
     alignItems: "center",
@@ -399,22 +499,10 @@ const styles = StyleSheet.create({
     height: 56,
     marginBottom: 20,
   },
-  inputDisabled: {
-    backgroundColor: "#F3F4F6",
-    borderColor: "#E5E7EB",
-  },
-  icon: {
-    marginRight: 12,
-  },
-  input: {
-    flex: 1,
-    fontSize: 16,
-    color: "#111827",
-  },
-  actionContainer: {
-    marginTop: 32,
-    gap: 16,
-  },
+  inputDisabled: { backgroundColor: "#F3F4F6", borderColor: "#E5E7EB" },
+  icon: { marginRight: 12 },
+  input: { flex: 1, fontSize: 16, color: "#111827" },
+  actionContainer: { marginTop: 32, gap: 16 },
   saveButton: {
     backgroundColor: PRIMARY_COLOR,
     height: 56,
@@ -428,13 +516,9 @@ const styles = StyleSheet.create({
     elevation: 4,
     flexDirection: "row",
   },
-  saveButtonText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "600",
-  },
+  saveButtonText: { color: "#FFFFFF", fontSize: 16, fontWeight: "600" },
   saveButtonDisabled: {
-    backgroundColor: "#A5B4FC",
+    backgroundColor: "#A7F3D0",
     shadowOpacity: 0,
     elevation: 0,
   },
@@ -448,12 +532,44 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  logoutIcon: {
-    marginRight: 8,
+  logoutIcon: { marginRight: 8 },
+  logoutButtonText: { color: "#EF4444", fontSize: 16, fontWeight: "600" },
+
+  // Styles cho Modal Giới tính
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
   },
-  logoutButtonText: {
-    color: "#EF4444",
-    fontSize: 16,
-    fontWeight: "600",
+  modalContent: {
+    backgroundColor: "#FFF",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 24,
+    paddingBottom: 40,
   },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#111827",
+    marginBottom: 16,
+    textAlign: "center",
+  },
+  modalOption: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F3F4F6",
+  },
+  modalOptionText: { fontSize: 16, color: "#374151" },
+  modalCancel: {
+    marginTop: 20,
+    alignItems: "center",
+    paddingVertical: 14,
+    backgroundColor: "#F3F4F6",
+    borderRadius: 12,
+  },
+  modalCancelText: { fontSize: 16, fontWeight: "600", color: "#4B5563" },
 });
