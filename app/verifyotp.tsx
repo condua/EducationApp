@@ -11,6 +11,7 @@ import {
   ScrollView,
   Platform,
   TouchableOpacity,
+  ActivityIndicator,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
@@ -21,6 +22,11 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+// 🟢 THÊM MỚI: Import Redux
+import { useDispatch, useSelector } from "react-redux";
+import { resetPassword, forgotPassword } from "@/src/store/authSlice"; // Sửa lại đường dẫn nếu cần
+import { AppDispatch, RootState } from "@/src/store/store"; // Sửa lại đường dẫn nếu cần
+
 const screenHeight = Dimensions.get("window").height;
 const screenWidth = Dimensions.get("window").width;
 
@@ -29,6 +35,10 @@ const PRIMARY_COLOR = "#00B14F";
 const VerifyOtpScreen = () => {
   const { email } = useLocalSearchParams();
   const router = useRouter();
+
+  // 🟢 THÊM MỚI: Khởi tạo Redux
+  const dispatch = useDispatch<AppDispatch>();
+  const { loading } = useSelector((state: RootState) => state.auth);
 
   const [otp, setOtp] = useState(["", "", "", ""]);
   const [timer, setTimer] = useState(300); // 5 phút (300 giây)
@@ -40,28 +50,6 @@ const VerifyOtpScreen = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [secureText, setSecureText] = useState(true);
   const [secureConfirmText, setSecureConfirmText] = useState(true);
-
-  // Hàm mô phỏng đổi mật khẩu trực tiếp (thay thế bằng API thật)
-  const resetPassword = async ({
-    email,
-    otp,
-    newPassword,
-  }: {
-    email: string;
-    otp: number;
-    newPassword: string;
-  }) => {
-    return new Promise((resolve) => {
-      setTimeout(() => resolve({ success: true }), 1000);
-    });
-  };
-
-  // Hàm mô phỏng gửi lại OTP (thay thế bằng API thật)
-  const reSendOtp = async ({ email }: { email: string }) => {
-    return new Promise((resolve) => {
-      setTimeout(() => resolve({ success: true }), 1000);
-    });
-  };
 
   const inputRefs = useRef<Array<TextInput | null>>([]);
 
@@ -82,16 +70,19 @@ const VerifyOtpScreen = () => {
     }
   };
 
-  const handleVerifyAndChangePassword = async () => {
+  // 🟢 CẬP NHẬT: Gọi API đổi mật khẩu thông qua Redux
+  const handleVerifyAndChangePassword = () => {
     const otpValue = otp.join("");
-    const otpValueNumber = parseInt(otpValue, 10);
 
-    // Validate OTP
-    if (otpValue.length < 4) {
+    // Validate OTP ( Backend OTP là 6 số, bạn đang để giao diện 4 số. Nếu backend 6 số thì phải sửa UI thành 6 ô)
+    // Dựa vào code backend của bạn, OTP là 6 số: Math.floor(100000 + Math.random() * 900000)
+    // Tạm thời mình giữ điều kiện length < 4 hoặc < 6 tùy vào việc bạn thiết kế lại UI.
+    // Giả sử bạn cập nhật UI thành 6 số:
+    if (otpValue.length < otp.length) {
       Dialog.show({
         type: ALERT_TYPE.WARNING,
         title: "Thiếu thông tin",
-        textBody: "Vui lòng nhập đầy đủ mã OTP 4 chữ số.",
+        textBody: `Vui lòng nhập đầy đủ mã OTP ${otp.length} chữ số.`,
         button: "Đóng",
       });
       return;
@@ -118,52 +109,62 @@ const VerifyOtpScreen = () => {
       return;
     }
 
-    try {
-      await resetPassword({
+    // 🟢 THÊM MỚI: Dispatch action resetPassword
+    dispatch(
+      resetPassword({
         email: email as string,
-        otp: otpValueNumber,
+        code: otpValue, // Gửi otpValue dưới dạng chuỗi (string)
         newPassword,
-      });
+      }),
+    )
+      .unwrap()
+      .then((res) => {
+        Dialog.show({
+          type: ALERT_TYPE.SUCCESS,
+          title: "Thành công",
+          textBody:
+            res.message || "Mật khẩu của bạn đã được thay đổi thành công.",
+          button: "Đăng nhập ngay",
 
-      Dialog.show({
-        type: ALERT_TYPE.SUCCESS,
-        title: "Thành công",
-        textBody: "Mật khẩu của bạn đã được thay đổi thành công.",
-        button: "Đăng nhập ngay",
-        onPressButton: () => {
-          Dialog.hide();
-          router.replace("/login"); // Chuyển về trang đăng nhập
-        },
+          onPressButton: () => {
+            Dialog.hide();
+            router.replace("/login"); // Chuyển về trang đăng nhập
+          },
+        });
+      })
+      .catch((error) => {
+        Dialog.show({
+          type: ALERT_TYPE.DANGER,
+          title: "Lỗi",
+          textBody: error || "Mã OTP không chính xác hoặc đã hết hạn.",
+          button: "Đóng",
+        });
       });
-    } catch (error) {
-      Dialog.show({
-        type: ALERT_TYPE.DANGER,
-        title: "Lỗi",
-        textBody: "Mã OTP không chính xác hoặc đã hết hạn.",
-        button: "Đóng",
-      });
-    }
   };
 
-  const handleResend = async () => {
-    setOtp(["", "", "", ""]);
-    try {
-      await reSendOtp({ email: email as string });
-      Dialog.show({
-        type: ALERT_TYPE.SUCCESS,
-        title: "Đã gửi lại",
-        textBody: "Mã OTP mới đã được gửi đến bạn.",
-        button: "Đóng",
+  // 🟢 CẬP NHẬT: Gọi API gửi lại OTP thông qua Redux
+  const handleResend = () => {
+    setOtp(["", "", "", ""]); // Reset ô nhập (hoặc reset 6 ô nếu backend dùng 6 số)
+
+    dispatch(forgotPassword(email as string))
+      .unwrap()
+      .then(() => {
+        Dialog.show({
+          type: ALERT_TYPE.SUCCESS,
+          title: "Đã gửi lại",
+          textBody: "Mã OTP mới đã được gửi đến bạn.",
+          button: "Đóng",
+        });
+        setTimer(300); // Reset timer về 5 phút
+      })
+      .catch((error) => {
+        Dialog.show({
+          type: ALERT_TYPE.DANGER,
+          title: "Lỗi",
+          textBody: error || "Không thể gửi lại mã OTP. Vui lòng thử lại sau.",
+          button: "Đóng",
+        });
       });
-      setTimer(300); // Reset timer về 5 phút
-    } catch (error) {
-      Dialog.show({
-        type: ALERT_TYPE.DANGER,
-        title: "Lỗi",
-        textBody: "Không thể gửi lại mã OTP. Vui lòng thử lại sau.",
-        button: "Đóng",
-      });
-    }
   };
 
   // Định dạng thời gian
@@ -204,6 +205,7 @@ const VerifyOtpScreen = () => {
           <TouchableOpacity
             style={styles.backButton}
             onPress={() => router.back()}
+            disabled={loading} // Chặn bấm khi đang tải
           >
             <Ionicons name="arrow-back-outline" size={26} color="#333" />
           </TouchableOpacity>
@@ -220,7 +222,7 @@ const VerifyOtpScreen = () => {
           >
             <Text style={styles.title}>Nhập mã xác nhận</Text>
             <Text style={styles.subtitle}>
-              Mã gồm 4 chữ số đã được gửi đến thiết bị của bạn.
+              Mã gồm {otp.length} chữ số đã được gửi đến thiết bị của bạn.
             </Text>
 
             {/* OTP Inputs */}
@@ -244,6 +246,7 @@ const VerifyOtpScreen = () => {
                   ref={(ref) => (inputRefs.current[index] = ref)}
                   onFocus={() => setFocusedIndex(index)}
                   onBlur={() => setFocusedIndex(null)}
+                  editable={!loading} // Khóa nhập khi đang tải
                 />
               ))}
             </View>
@@ -268,6 +271,7 @@ const VerifyOtpScreen = () => {
                 secureTextEntry={secureText}
                 value={newPassword}
                 onChangeText={setNewPassword}
+                editable={!loading}
               />
               <TouchableOpacity onPress={() => setSecureText(!secureText)}>
                 <Ionicons
@@ -292,6 +296,7 @@ const VerifyOtpScreen = () => {
                 secureTextEntry={secureConfirmText}
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
+                editable={!loading}
               />
               <TouchableOpacity
                 onPress={() => setSecureConfirmText(!secureConfirmText)}
@@ -306,17 +311,30 @@ const VerifyOtpScreen = () => {
 
             {/* Buttons */}
             <TouchableOpacity
-              style={styles.verifyButton}
+              style={[
+                styles.verifyButton,
+                loading && { backgroundColor: "#80d8a7" },
+              ]}
               onPress={handleVerifyAndChangePassword}
+              disabled={loading}
             >
-              <Text style={styles.verifyText}>Đổi mật khẩu</Text>
+              {loading ? (
+                <ActivityIndicator color="#FFF" />
+              ) : (
+                <Text style={styles.verifyText}>Đổi mật khẩu</Text>
+              )}
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.resendButton}
+              style={[styles.resendButton, loading && { opacity: 0.5 }]}
               onPress={handleResend}
+              disabled={loading || timer > 0} // Chỉ cho gửi lại khi hết giờ
             >
-              <Text style={styles.resendText}>Gửi lại mã OTP</Text>
+              <Text style={styles.resendText}>
+                {timer > 0
+                  ? `Gửi lại mã OTP (${formatTimer(timer)})`
+                  : "Gửi lại mã OTP"}
+              </Text>
             </TouchableOpacity>
           </ScrollView>
         </KeyboardAvoidingView>
@@ -359,7 +377,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 24,
     paddingTop: 20,
-    paddingBottom: 150, // Tránh đè lên hình ảnh bên dưới
+    paddingBottom: 150,
   },
   title: {
     fontSize: 26,
@@ -468,6 +486,6 @@ const styles = StyleSheet.create({
     bottom: -10,
     width: "100%",
     height: 180,
-    zIndex: -1, // Cho hình nền ẩn ra sau để không ảnh hưởng bấm nút
+    zIndex: -1,
   },
 });

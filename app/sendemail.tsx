@@ -7,20 +7,31 @@ import {
   Image,
   Animated,
   TouchableOpacity,
+  Alert,
+  ActivityIndicator,
 } from "react-native";
 import React, { useRef, useState } from "react";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons"; // Thêm thư viện icon
+import { Ionicons } from "@expo/vector-icons";
 
+// 🟢 THÊM MỚI: Import Redux
+import { useDispatch, useSelector } from "react-redux";
+import { forgotPassword } from "@/src/store/authSlice"; // Sửa lại đường dẫn nếu cần
+import { AppDispatch, RootState } from "@/src/store/store"; // Sửa lại đường dẫn nếu có file store riêng
+import Toast from "react-native-toast-message";
 const screenHeight = Dimensions.get("window").height;
 const screenWidth = Dimensions.get("window").width;
 
-// Định màu chủ đạo
 const PRIMARY_COLOR = "#00B14F";
 
 const SendEmail = () => {
-  const router = useRouter(); // Sử dụng hook useRouter
+  const router = useRouter();
+  const dispatch = useDispatch<AppDispatch>();
+
+  // 🟢 THÊM MỚI: Lấy state loading từ Redux
+  const { loading } = useSelector((state: RootState) => state.auth);
+
   const [email, setEmail] = useState("");
   const [isFocused, setIsFocused] = useState(false);
   const placeholderAnim = useRef(new Animated.Value(0)).current;
@@ -48,9 +59,55 @@ const SendEmail = () => {
     }
   };
 
+  // 🟢 THÊM MỚI: Hàm xử lý khi bấm nút gửi OTP
+  const handleSendOTP = () => {
+    // Validate cơ bản
+    if (!email.trim()) {
+      Toast.show({
+        type: "error",
+        text1: "Lỗi",
+        text2: "Vui lòng nhập email của bạn.",
+      });
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      Toast.show({
+        type: "error",
+        text1: "Lỗi",
+        text2: "Vui lòng nhập một địa chỉ email hợp lệ.",
+      });
+      return;
+    }
+
+    // Gọi API qua Redux Thunk
+    dispatch(forgotPassword(email.toLowerCase()))
+      .unwrap()
+      .then((res) => {
+        Toast.show({
+          type: "success",
+          text1: "Thành công",
+          text2: res.message || "Mã OTP đã được gửi!",
+        });
+        // Chuyển trang và truyền email sang màn hình Verify OTP
+        router.push({
+          pathname: "/verifyotp",
+          params: { email: email.toLowerCase() },
+        });
+      })
+      .catch((error) => {
+        Toast.show({
+          type: "error",
+          text1: "Lỗi",
+          text2: error || "Đã xảy ra lỗi. Vui lòng thử lại.",
+        });
+      });
+  };
+
   const placeholderTranslateY = placeholderAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [14, -12], // Căn chỉnh lại độ cao khi label bay lên
+    outputRange: [14, -12],
   });
 
   const placeholderFontSize = placeholderAnim.interpolate({
@@ -60,16 +117,16 @@ const SendEmail = () => {
 
   const placeholderColor = placeholderAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ["#aaa", PRIMARY_COLOR], // Đổi màu chữ khi focus thành xanh lá
+    outputRange: ["#aaa", PRIMARY_COLOR],
   });
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header Back Button */}
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => router.back()} // Nút quay lại màn hình trước
+          onPress={() => router.back()}
+          disabled={loading} // Vô hiệu hóa nút back khi đang tải
         >
           <Ionicons name="arrow-back-outline" size={26} color="#333" />
         </TouchableOpacity>
@@ -84,7 +141,7 @@ const SendEmail = () => {
         <View
           style={[
             styles.inputContainer,
-            { borderColor: isFocused ? PRIMARY_COLOR : "#ccc" }, // Đổi màu viền khi focus
+            { borderColor: isFocused ? PRIMARY_COLOR : "#ccc" },
           ]}
         >
           <Animated.Text
@@ -107,14 +164,21 @@ const SendEmail = () => {
             onBlur={handleBlur}
             keyboardType="email-address"
             autoCapitalize="none"
+            editable={!loading} // Vô hiệu hóa nhập liệu khi đang tải
           />
         </View>
 
+        {/* 🟢 THÊM MỚI: Xử lý hiển thị UI khi đang loading */}
         <TouchableOpacity
-          style={styles.button}
-          onPress={() => router.push("/verifyotp")}
+          style={[styles.button, loading && { backgroundColor: "#80d8a7" }]}
+          onPress={handleSendOTP}
+          disabled={loading}
         >
-          <Text style={styles.buttonText}>Khôi phục mật khẩu</Text>
+          {loading ? (
+            <ActivityIndicator color="#FFF" />
+          ) : (
+            <Text style={styles.buttonText}>Khôi phục mật khẩu</Text>
+          )}
         </TouchableOpacity>
       </View>
 
@@ -143,13 +207,13 @@ const styles = StyleSheet.create({
   },
   backButton: {
     padding: 8,
-    marginLeft: -8, // Căn lề cho icon cân đối với mép màn hình
+    marginLeft: -8,
   },
   inner: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingBottom: 150, // Chừa khoảng trống cho hình ảnh ở dưới
+    paddingBottom: 150,
   },
   title: {
     fontSize: 26,
@@ -166,35 +230,35 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     width: screenWidth * 0.85,
-    borderWidth: 1.5, // Tăng độ dày viền một chút cho rõ nét
-    borderRadius: 15, // Bo góc mềm mại hơn
+    borderWidth: 1.5,
+    borderRadius: 15,
     paddingHorizontal: 15,
     backgroundColor: "#FFF",
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 30,
     position: "relative",
-    height: 56, // Cố định chiều cao để text không bị xô lệch
+    height: 56,
   },
   input: {
     flex: 1,
     height: "100%",
     fontSize: 16,
     color: "#333",
-    marginTop: 5, // Đẩy text xuống một chút để không đè lên label
+    marginTop: 5,
   },
   button: {
     width: screenWidth * 0.85,
     height: 52,
-    backgroundColor: PRIMARY_COLOR, // Đổi sang xanh TopCV
-    borderRadius: 30, // Bo góc mạnh như các màn hình khác
+    backgroundColor: PRIMARY_COLOR,
+    borderRadius: 30,
     justifyContent: "center",
     alignItems: "center",
     shadowColor: PRIMARY_COLOR,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 5,
-    elevation: 4, // Đổ bóng nhẹ cho nút
+    elevation: 4,
   },
   buttonText: {
     fontSize: 16,
@@ -206,12 +270,12 @@ const styles = StyleSheet.create({
     bottom: 0,
     width: "100%",
     height: 180,
-    zIndex: -1, // Đẩy hình nền ra phía sau để không che mất nội dung
+    zIndex: -1,
   },
   placeholder: {
     position: "absolute",
     left: 15,
-    top: 15, // Căn giữa theo chiều dọc mặc định
+    top: 15,
     backgroundColor: "white",
     paddingHorizontal: 5,
   },

@@ -9,7 +9,7 @@ interface AuthState {
   token: string | null;
   loading: boolean;
   error: string | null;
-  isInitialized: boolean; // SỬA LẠI: Kiểu dữ liệu là boolean, không phải false
+  isInitialized: boolean;
 }
 
 // Trạng thái ban đầu
@@ -25,7 +25,7 @@ const initialState: AuthState = {
 // URL API
 const API_URL = "https://educationappbackend-4inf.onrender.com/api/auth";
 
-// Thunk: Dùng để khôi phục đăng nhập khi mở app
+// Thunk: Khôi phục đăng nhập
 export const restoreLogin = createAsyncThunk(
   "auth/restoreLogin",
   async (_, { dispatch, rejectWithValue }) => {
@@ -38,7 +38,6 @@ export const restoreLogin = createAsyncThunk(
         dispatch(updateProfile(user));
         return { token, user };
       }
-      // SỬA LẠI: Dùng rejectWithValue thay vì throw Error để tránh crash app
       return rejectWithValue("No token found");
     } catch (error: any) {
       return rejectWithValue(error.message);
@@ -66,7 +65,6 @@ export const loginUser = createAsyncThunk(
         throw new Error(data.message || "Đăng nhập thất bại");
       }
 
-      // THÊM MỚI: Lưu token và thông tin user vào bộ nhớ máy tính
       await AsyncStorage.setItem("userToken", data.token);
       await AsyncStorage.setItem("userData", JSON.stringify(data.user));
 
@@ -99,13 +97,63 @@ export const registerUser = createAsyncThunk(
         throw new Error(data.message || "Đăng ký thất bại");
       }
 
-      // THÊM MỚI: Nếu backend tự động login sau khi đăng ký, lưu bộ nhớ luôn
       if (data.token) {
         await AsyncStorage.setItem("userToken", data.token);
         await AsyncStorage.setItem("userData", JSON.stringify(data.user));
       }
 
       dispatch(updateProfile(data.user));
+
+      return data;
+    } catch (error: any) {
+      return rejectWithValue(error.message);
+    }
+  },
+);
+
+// 🟢 THÊM MỚI: Thunk Gửi Email Quên Mật Khẩu (Lấy OTP)
+export const forgotPassword = createAsyncThunk(
+  "auth/forgotPassword",
+  async (email: string, { rejectWithValue }) => {
+    try {
+      const response = await fetch(`${API_URL}/forgot-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Gửi email thất bại");
+      }
+
+      return data;
+    } catch (error: any) {
+      return rejectWithValue(error.message);
+    }
+  },
+);
+
+// 🟢 THÊM MỚI: Thunk Đổi Mật Khẩu với OTP
+export const resetPassword = createAsyncThunk(
+  "auth/resetPassword",
+  async (
+    resetData: { email: string; code: string; newPassword: string },
+    { rejectWithValue },
+  ) => {
+    try {
+      const response = await fetch(`${API_URL}/reset-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(resetData),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Đổi mật khẩu thất bại");
+      }
 
       return data;
     } catch (error: any) {
@@ -123,23 +171,26 @@ export const authSlice = createSlice({
       state.isAuthenticated = false;
       state.user = null;
       state.token = null;
-      // Khi logout thì xóa sạch token trong máy
       AsyncStorage.removeItem("userToken");
       AsyncStorage.removeItem("userData");
+    },
+    // (Tuỳ chọn) Helper để reset error khi chuyển trang
+    clearAuthError: (state) => {
+      state.error = null;
     },
   },
   extraReducers: (builder) => {
     builder
-      // ---------------- TRẠNG THÁI KHÔI PHỤC ĐĂNG NHẬP (QUAN TRỌNG) ----------------
+      // ---------------- TRẠNG THÁI KHÔI PHỤC ĐĂNG NHẬP ----------------
       .addCase(restoreLogin.fulfilled, (state, action) => {
         state.isAuthenticated = true;
         state.user = action.payload.user;
         state.token = action.payload.token;
-        state.isInitialized = true; // Báo hiệu app đã check token xong
+        state.isInitialized = true;
       })
       .addCase(restoreLogin.rejected, (state) => {
         state.isAuthenticated = false;
-        state.isInitialized = true; // Báo hiệu app đã check token xong (nhưng thất bại)
+        state.isInitialized = true;
       })
 
       // ---------------- TRẠNG THÁI ĐĂNG NHẬP ----------------
@@ -172,9 +223,37 @@ export const authSlice = createSlice({
       .addCase(registerUser.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
+      })
+
+      // ---------------- 🟢 TRẠNG THÁI QUÊN MẬT KHẨU ----------------
+      .addCase(forgotPassword.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(forgotPassword.fulfilled, (state) => {
+        state.loading = false;
+        // Không thay đổi user/token, chỉ báo thành công (Component UI sẽ dùng .unwrap() để chuyển màn hình)
+      })
+      .addCase(forgotPassword.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+
+      // ---------------- 🟢 TRẠNG THÁI ĐẶT LẠI MẬT KHẨU ----------------
+      .addCase(resetPassword.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(resetPassword.fulfilled, (state) => {
+        state.loading = false;
+        // Tương tự, UI Component dùng .unwrap() để chuyển hướng về Login
+      })
+      .addCase(resetPassword.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
       });
   },
 });
 
-export const { logout } = authSlice.actions;
+export const { logout, clearAuthError } = authSlice.actions;
 export default authSlice.reducer;
