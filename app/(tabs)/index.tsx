@@ -28,12 +28,16 @@ const categories = [
 ];
 
 const mentors = [
-  { id: "1", name: "Phúc", role: "Python Expert" },
-  { id: "2", name: "Hoàng", role: "Web Dev" },
-  { id: "3", name: "Linh", role: "UI/UX" },
-  { id: "4", name: "Tuấn", role: "Data Sci" },
-  { id: "5", name: "Mai", role: "English" },
+  { id: "1", name: "Phan Hoàng Phúc", role: "Tiếng Anh" },
+  { id: "2", name: "Phan Tấn Lộc", role: "Toán" },
 ];
+
+const getInitials = (name: string) => {
+  const words = name.trim().split(" ");
+  const first = words[0]?.charAt(0) || "";
+  const last = words[words.length - 1]?.charAt(0) || "";
+  return (first + last).toUpperCase();
+};
 
 export default function HomeScreen() {
   const dispatch = useDispatch<any>();
@@ -85,9 +89,7 @@ export default function HomeScreen() {
         <View style={styles.header}>
           <View>
             <Text style={styles.subText}>{greeting},</Text>
-            <Text style={styles.welcomeText}>
-              {fullName || "Phan Hoàng Phúc"}
-            </Text>
+            <Text style={styles.welcomeText}>{fullName || "Tình yêu"}</Text>
           </View>
           <TouchableOpacity style={styles.bellButton}>
             <FontAwesome name="bell-o" size={22} color="#111827" />
@@ -258,7 +260,7 @@ export default function HomeScreen() {
             <TouchableOpacity style={styles.mentorCard}>
               <Image
                 source={{
-                  uri: `https://ui-avatars.com/api/?name=${item.name}&background=4F46E5&color=fff&size=128`,
+                  uri: `https://ui-avatars.com/api/?name=${getInitials(item.name)}&background=22c55e&color=fff&size=128`,
                 }}
                 style={styles.mentorImage}
               />
@@ -389,7 +391,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   sectionTitle: { fontSize: 18, fontWeight: "bold", color: "#111827" },
-  seeAllText: { fontSize: 14, color: PRIMARY_COLOR, fontWeight: "600" },
+  seeAllText: { fontSize: 14, color: "#29980b", fontWeight: "600" },
   categoryItem: {
     paddingVertical: 8,
     paddingHorizontal: 20,
@@ -425,7 +427,7 @@ const styles = StyleSheet.create({
   courseInfo: { padding: 14 },
   courseCategory: {
     fontSize: 12,
-    color: PRIMARY_COLOR,
+    color: "#16a34a",
     fontWeight: "600",
     marginBottom: 4,
     textTransform: "capitalize", // Cho chữ đẹp hơn
@@ -451,7 +453,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginLeft: 4,
   },
-  mentorCard: { alignItems: "center", marginRight: 20, width: 70 },
+  mentorCard: { alignItems: "center", marginRight: 20 },
   mentorImage: {
     width: 64,
     height: 64,

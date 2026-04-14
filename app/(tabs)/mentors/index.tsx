@@ -9,18 +9,26 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
+const getInitials = (name: string) => {
+  const words = name.trim().split(" ");
+  const first = words[0]?.charAt(0) || "";
+  const last = words[words.length - 1]?.charAt(0) || "";
+  return (first + last).toUpperCase();
+};
+
 const mentors = [
-  { id: "1", name: "Jiya Shetty", category: "3D Design", avatar: "" },
-  { id: "2", name: "Donald S", category: "Arts & Humanities", avatar: "" },
-  { id: "3", name: "Aman", category: "Personal Development", avatar: "" },
-  { id: "4", name: "Vrushab. M", category: "SEO & Marketing", avatar: "" },
   {
-    id: "5",
-    name: "Robert William",
-    category: "Office Productivity",
-    avatar: "",
+    id: "1",
+    name: "Phan Hoàng Phúc",
+    category: "Toán",
+    avatar: `https://ui-avatars.com/api/?name=${getInitials("Phan Hoàng Phúc")}&background=22c55e&color=fff&size=128`,
   },
-  { id: "6", name: "Soman", category: "Web Development", avatar: "" },
+  {
+    id: "2",
+    name: "Phan Tấn Lộc",
+    category: "Tiếng Anh",
+    avatar: `https://ui-avatars.com/api/?name=${getInitials("Phan Tấn Lộc")}&background=22c55e&color=fff&size=128`,
+  },
 ];
 
 const MentorListScreen = () => {
