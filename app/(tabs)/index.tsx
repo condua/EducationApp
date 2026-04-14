@@ -43,7 +43,7 @@ export default function HomeScreen() {
 
   // (Tùy chọn) Lấy tên người dùng từ profileSlice để lời chào thêm sinh động
   const { fullName } = useSelector((state: any) => state.profile);
-
+  const currentHour = new Date().getHours();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("Tất cả");
 
@@ -52,6 +52,14 @@ export default function HomeScreen() {
     dispatch(getAllCourses());
   }, [dispatch]);
 
+  let greeting = "Xin chào";
+  if (currentHour >= 5 && currentHour < 12) {
+    greeting = "Chào buổi sáng";
+  } else if (currentHour >= 12 && currentHour < 18) {
+    greeting = "Chào buổi chiều";
+  } else {
+    greeting = "Chào buổi tối"; // Từ 18h đến trước 5h sáng
+  }
   // Lọc khóa học dựa theo API trả về (Lưu ý: chuyển text về chữ thường để so sánh chính xác)
   const filteredCourses =
     courses?.filter((course: any) => {
@@ -76,7 +84,7 @@ export default function HomeScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.subText}>Chào buổi sáng,</Text>
+            <Text style={styles.subText}>{greeting},</Text>
             <Text style={styles.welcomeText}>
               {fullName || "Phan Hoàng Phúc"}
             </Text>
@@ -267,7 +275,7 @@ export default function HomeScreen() {
 
 // Bảng màu chuẩn
 const PRIMARY_COLOR = "#4F46E5";
-const BG_COLOR = "#F9FAFB";
+const BG_COLOR = "#ffffff";
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: BG_COLOR },

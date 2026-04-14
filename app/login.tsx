@@ -6,22 +6,21 @@ import {
   TouchableOpacity,
   StyleSheet,
   Image,
-  Button,
   Alert,
 } from "react-native";
 import { useDispatch, useSelector } from "react-redux";
 import { loginUser } from "../src/store/authSlice";
 import { useRouter, Link, useNavigation } from "expo-router";
-import { Checkbox } from "react-native-paper";
 import { Ionicons, FontAwesome } from "@expo/vector-icons";
 import { RootState } from "@/src/store/store";
+import Toast from "react-native-toast-message"; // <-- Import thư viện Toast
+
 export default function LoginScreen() {
   const dispatch = useDispatch<any>();
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [secureText, setSecureText] = useState(true);
-  // // const [checked, setChecked] = useState(false);
   const { loading, error, isAuthenticated } = useSelector(
     (state: RootState) => state.auth,
   );
@@ -29,29 +28,51 @@ export default function LoginScreen() {
   const navigate = useNavigation();
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert("Error", "Please enter both email and password.");
+      // Sử dụng Toast hiển thị cảnh báo (Warning)
+      Toast.show({
+        type: "error", // Có thể là 'success', 'error', hoặc 'info'
+        text1: "Lỗi đăng nhập",
+        text2: "Vui lòng nhập cả email và mật khẩu.",
+        position: "top", // Hiện từ trên xuống
+        visibilityTime: 3000, // Tự động ẩn sau 3 giây
+      });
       return;
     }
 
-    // Dispatch action loginUser
     const result = await dispatch(loginUser({ email, password }));
 
     if (loginUser.fulfilled.match(result)) {
-      router.replace("/(tabs)"); // Điều hướng đến màn hình chính nếu đăng nhập thành công
+      // Toast thông báo thành công (Tùy chọn)
+      Toast.show({
+        type: "success",
+        text1: "Thành công",
+        text2: "Đăng nhập thành công, đang chuyển hướng...",
+        visibilityTime: 2000,
+      });
+
+      // Chuyển hướng sau một khoảng trễ ngắn để người dùng kịp đọc
+      setTimeout(() => {
+        router.replace("/(tabs)");
+      }, 1000);
     } else {
-      Alert.alert("Login Failed", result.payload || "An error occurred");
+      // Toast báo lỗi thất bại
+      Toast.show({
+        type: "error",
+        text1: "Đăng nhập thất bại",
+        text2: result.payload || "Đã xảy ra lỗi không xác định.",
+      });
     }
   };
 
   return (
     <View style={styles.container}>
       {/* Logo */}
-      <Image source={require("../assets/logo.png")} style={styles.logo} />
+      <Image source={require("../assets/logoMLPA.png")} style={styles.logo} />
 
       {/* Title */}
-      <Text style={styles.title}>Let's Sign In !</Text>
+      <Text style={styles.title}>Chào mừng bạn</Text>
       <Text style={styles.subtitle}>
-        Login to Your Accout to continue All Courses
+        Đến với MLPA! Hãy đăng nhập để tiếp tục trải nghiệm.
       </Text>
 
       {/* Email Input */}
@@ -59,12 +80,13 @@ export default function LoginScreen() {
         <Ionicons
           name="mail-outline"
           size={20}
-          color="#666"
+          color="#888"
           style={styles.icon}
         />
         <TextInput
           style={styles.input}
           placeholder="Email"
+          placeholderTextColor="#888"
           value={email}
           onChangeText={setEmail}
         />
@@ -75,12 +97,13 @@ export default function LoginScreen() {
         <Ionicons
           name="lock-closed-outline"
           size={20}
-          color="#666"
+          color="#888"
           style={styles.icon}
         />
         <TextInput
           style={styles.input}
-          placeholder="Password"
+          placeholder="Nhập mật khẩu"
+          placeholderTextColor="#888"
           secureTextEntry={secureText}
           value={password}
           onChangeText={setPassword}
@@ -89,39 +112,43 @@ export default function LoginScreen() {
           <Ionicons
             name={secureText ? "eye-off-outline" : "eye-outline"}
             size={20}
-            color="#666"
+            color="#888"
           />
         </TouchableOpacity>
       </View>
 
-      {/* Terms & Conditions */}
+      {/* Terms & Conditions / Forgot Password */}
       <Link style={styles.checkboxContainer} href={"/sendemail"}>
-        Forgot Password ?
+        Quên mật khẩu?
       </Link>
 
-      {/* Sign Up Button */}
+      {/* Sign In Button */}
       <TouchableOpacity style={styles.signUpButton} onPress={handleLogin}>
-        <Text style={styles.signUpText}>Sign In</Text>
-        <Ionicons name="arrow-forward-outline" size={20} color="white" />
+        <Text style={styles.signUpText}>Đăng nhập</Text>
       </TouchableOpacity>
 
+      <View style={styles.dividerContainer}>
+        <View style={styles.divider} />
+        <Text style={styles.orText}>Hoặc đăng nhập bằng</Text>
+        <View style={styles.divider} />
+      </View>
+
       {/* Social Login */}
-      <Text style={styles.orText}>Or Continue With</Text>
       <View style={styles.socialContainer}>
+        <TouchableOpacity style={styles.socialButton}>
+          <FontAwesome name="facebook" size={24} color="#1877F2" />
+        </TouchableOpacity>
         <TouchableOpacity style={styles.socialButton}>
           <FontAwesome name="google" size={24} color="#DB4437" />
         </TouchableOpacity>
-        {/* <TouchableOpacity style={styles.socialButton}>
-              <FontAwesome name="apple" size={24} color="black" />
-            </TouchableOpacity> */}
       </View>
 
-      {/* Sign In Link */}
-      <View>
+      {/* Sign Up Link */}
+      <View style={styles.footerContainer}>
         <Text style={styles.signInText}>
-          Don't have an Account?{" "}
+          Bạn chưa có tài khoản?{" "}
           <Link style={styles.signInLink} href={"/register"}>
-            SIGN UP
+            Đăng ký ngay
           </Link>
         </Text>
       </View>
@@ -133,41 +160,39 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F5F7FA",
+    backgroundColor: "#FFFFFF", // Đổi nền thành màu trắng tinh
     alignItems: "center",
     justifyContent: "center",
     padding: 20,
   },
   logo: {
-    width: 130,
-    height: 100,
-    marginBottom: 20,
+    width: 180,
+    height: 180,
+    marginBottom: 10,
+    resizeMode: "contain",
   },
   title: {
     fontSize: 22,
     fontWeight: "bold",
     color: "#222",
     textAlign: "center",
+    marginBottom: 5,
   },
   subtitle: {
     fontSize: 14,
     color: "#666",
-    marginBottom: 20,
+    marginBottom: 30,
     textAlign: "center",
   },
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#fff",
+    backgroundColor: "#F4F5F7", // Đổi nền input thành xám nhạt
     paddingHorizontal: 15,
-    paddingVertical: 12,
-    borderRadius: 10,
+    paddingVertical: 14,
+    borderRadius: 25, // Bo góc nhiều hơn giống ảnh
     width: "100%",
-    marginBottom: 20,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    elevation: 5,
+    marginBottom: 15,
   },
   icon: {
     marginRight: 10,
@@ -175,60 +200,73 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 16,
+    color: "#333",
   },
   checkboxContainer: {
-    flexDirection: "row",
     textAlign: "right",
     width: "100%",
-    color: "blue",
-    marginBottom: 20,
-  },
-  checkboxText: {
-    fontSize: 14,
-    color: "#333",
+    color: "#00B14F", // Đổi màu chữ link thành xanh lá cây
+    marginBottom: 25,
+    fontWeight: "500",
   },
   signUpButton: {
     flexDirection: "row",
-    backgroundColor: "#007AFF",
-    paddingVertical: 12,
+    backgroundColor: "#00B14F", // Đổi màu nút thành xanh lá cây TopCV
+    paddingVertical: 14,
     paddingHorizontal: 20,
     borderRadius: 30,
     alignItems: "center",
     justifyContent: "center",
     width: "100%",
-    marginBottom: 15,
+    marginBottom: 25,
   },
   signUpText: {
     color: "#fff",
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "bold",
-    marginRight: 5,
+  },
+  dividerContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    width: "100%",
+    marginBottom: 20,
+  },
+  divider: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#E0E0E0",
   },
   orText: {
     fontSize: 14,
     color: "#666",
-    marginBottom: 10,
+    marginHorizontal: 10,
   },
   socialContainer: {
     flexDirection: "row",
     gap: 20,
-    marginBottom: 20,
+    marginBottom: 30,
   },
   socialButton: {
     backgroundColor: "#fff",
-    padding: 10,
-    borderRadius: 50,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    elevation: 5,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#E0E0E0", // Viền mỏng thay vì shadow đậm
+  },
+  footerContainer: {
+    marginTop: 10,
   },
   signInText: {
     fontSize: 14,
     color: "#333",
   },
   signInLink: {
-    color: "#007AFF",
+    color: "#00B14F", // Đổi màu chữ link thành xanh lá cây
     fontWeight: "bold",
   },
 });

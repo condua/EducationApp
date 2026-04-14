@@ -8,8 +8,9 @@ export interface ProfileState {
   email: string;
   avatar: string;
   role: string;
-  enrolledCourses: string[]; // Mảng chứa ID các khóa học đã đăng ký
+  enrolledCourses: string[];
   loading: boolean;
+  updateLoading: boolean; // Mới: Trạng thái loading riêng khi đang cập nhật profile
   error: string | null;
 }
 
@@ -24,38 +25,72 @@ const initialState: ProfileState = {
   role: "user",
   enrolledCourses: [],
   loading: false,
+  updateLoading: false,
   error: null,
 };
 
-const API_URL_ME = "https://educationappbackend-4inf.onrender.com/api/users/me";
+const API_BASE_URL = "https://educationappbackend-4inf.onrender.com/api/users";
 
-// 3. Thunk: Lấy thông tin cá nhân của người dùng hiện tại
+// --- THUNK 1: Lấy thông tin user ---
 export const fetchCurrentUser = createAsyncThunk(
-  "profile/fetchCurrentUser", // Đổi tên prefix thành 'profile' cho chuẩn với tên slice
+  "profile/fetchCurrentUser",
   async (_, { getState, rejectWithValue }) => {
     try {
       const state = getState() as any;
-      const token = state.auth.token; // Đảm bảo lấy đúng đường dẫn token từ authSlice
+      const token = state.auth.token;
 
-      if (!token) {
-        throw new Error("Không có token xác thực.");
-      }
+      if (!token) throw new Error("Không có token xác thực.");
 
-      const response = await fetch(API_URL_ME, {
+      const response = await fetch(`${API_BASE_URL}/me`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`, // Gửi token lên để xác thực
+          Authorization: `Bearer ${token}`,
         },
+      });
+
+      const data = await response.json();
+      if (!response.ok)
+        throw new Error(data.message || "Lấy thông tin thất bại.");
+
+      return data;
+    } catch (error: any) {
+      return rejectWithValue(error.message || "Lỗi kết nối máy chủ");
+    }
+  },
+);
+
+// --- THUNK 2 (MỚI): Cập nhật thông tin user lên Database ---
+// Truyền vào các trường cần update: fullName, phone, avatar...
+export const updateUserProfileOnServer = createAsyncThunk(
+  "profile/updateUserProfileOnServer",
+  async (updateData: Partial<ProfileState>, { getState, rejectWithValue }) => {
+    try {
+      const state = getState() as any;
+      const token = state.auth.token;
+      const userId = state.profile._id; // Lấy ID của user hiện tại
+
+      if (!token || !userId) {
+        throw new Error("Không đủ thông tin xác thực để cập nhật.");
+      }
+
+      // Gọi API PUT /api/users/:id mà bạn đã định nghĩa ở backend
+      const response = await fetch(`${API_BASE_URL}/${userId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(updateData),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || "Lấy thông tin người dùng thất bại.");
+        throw new Error(data.message || "Cập nhật thông tin thất bại.");
       }
 
-      return data; // Dữ liệu này sẽ được chuyển xuống 'fulfilled' trong extraReducers
+      return data; // Backend thường sẽ trả về object User đã được update
     } catch (error: any) {
       return rejectWithValue(error.message || "Lỗi kết nối máy chủ");
     }
@@ -67,38 +102,42 @@ const profileSlice = createSlice({
   name: "profile",
   initialState,
   reducers: {
-    // Cập nhật thông tin thủ công (ví dụ: khi người dùng vừa chỉnh sửa form Profile)
+    // Giữ lại cái này phòng khi cần update UI ngay lập tức không qua API
     updateProfile: (state, action: PayloadAction<Partial<ProfileState>>) => {
       return { ...state, ...action.payload };
     },
-    // Reset Profile khi Đăng xuất (Gọi hàm này cùng lúc với hàm logout của authSlice)
     clearProfile: () => {
       return initialState;
     },
   },
   extraReducers: (builder) => {
     builder
-      // Trạng thái đang gọi API
+      // --- Xử lý Fetch User ---
       .addCase(fetchCurrentUser.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-      // Trạng thái gọi API thành công -> Cập nhật State
       .addCase(fetchCurrentUser.fulfilled, (state, action) => {
         state.loading = false;
-        // Trải dữ liệu trả về từ API đè lên state hiện tại
         Object.assign(state, action.payload);
-
-        // Hoặc bạn có thể gán từng trường một cách thủ công nếu muốn an toàn hơn:
-        // state._id = action.payload._id;
-        // state.fullName = action.payload.fullName;
-        // state.email = action.payload.email;
-        // state.avatar = action.payload.avatar || state.avatar;
-        // state.enrolledCourses = action.payload.enrolledCourses || [];
       })
-      // Trạng thái gọi API thất bại
       .addCase(fetchCurrentUser.rejected, (state, action) => {
         state.loading = false;
+        state.error = action.payload as string;
+      })
+
+      // --- Xử lý Update User ---
+      .addCase(updateUserProfileOnServer.pending, (state) => {
+        state.updateLoading = true; // Đang lưu lên DB
+        state.error = null;
+      })
+      .addCase(updateUserProfileOnServer.fulfilled, (state, action) => {
+        state.updateLoading = false;
+        // Ghi đè thông tin mới được Backend trả về vào State hiện tại
+        Object.assign(state, action.payload);
+      })
+      .addCase(updateUserProfileOnServer.rejected, (state, action) => {
+        state.updateLoading = false;
         state.error = action.payload as string;
       });
   },

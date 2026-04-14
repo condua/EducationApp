@@ -5,10 +5,10 @@ import { Stack, useRouter, useSegments } from "expo-router";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { StyleSheet, View, ActivityIndicator } from "react-native";
 import { restoreLogin } from "@/src/store/authSlice";
+import Toast from "react-native-toast-message"; // ✅ Thêm dòng import này
 
 // Tách riêng logic điều hướng để có thể dùng các Hook của Redux và Expo Router
 function RootNavigation() {
-  // Thêm <any> hoặc type AppDispatch tùy theo cấu hình store của bạn để tránh lỗi TypeScript
   const dispatch = useDispatch<any>();
   const router = useRouter();
   const segments = useSegments();
@@ -25,7 +25,6 @@ function RootNavigation() {
 
   // 2. Tự động điều hướng dựa trên trạng thái đăng nhập
   useEffect(() => {
-    // Chờ quá trình check token hoàn tất mới chạy tiếp
     if (!isInitialized) return;
 
     // Khai báo các màn hình thuộc nhóm Chưa Đăng Nhập
@@ -37,10 +36,8 @@ function RootNavigation() {
       segments[0] === "verifyotp";
 
     if (!isAuthenticated && !inAuthGroup) {
-      // Nếu chưa đăng nhập mà vào màn hình chính -> Đá về trang đăng nhập
       router.replace("/login");
     } else if (isAuthenticated && inAuthGroup) {
-      // Nếu đã đăng nhập mà lại vào trang đăng nhập/đăng ký -> Đẩy thẳng vào app
       router.replace("/(tabs)");
     }
   }, [isAuthenticated, isInitialized, segments, router]);
@@ -73,6 +70,8 @@ export default function Layout() {
     <Provider store={store}>
       <GestureHandlerRootView style={styles.container}>
         <RootNavigation />
+        {/* ✅ Đặt Toast ở đây để nó có thể đè lên tất cả các màn hình trong RootNavigation */}
+        <Toast />
       </GestureHandlerRootView>
     </Provider>
   );
@@ -85,6 +84,6 @@ const styles = StyleSheet.create({
   loadingContainer: {
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#F5F7FA", // Màu nền hợp với app của bạn
+    backgroundColor: "#F5F7FA",
   },
 });

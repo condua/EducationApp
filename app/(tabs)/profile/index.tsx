@@ -10,15 +10,21 @@ import {
   ScrollView,
   Platform,
   Alert,
+  ActivityIndicator, // Đã thêm ActivityIndicator
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useDispatch, useSelector } from "react-redux";
 import { logout } from "@/src/store/authSlice";
-import { updateProfile } from "@/src/slices/profileSlice";
+// Đã thay đổi import để sử dụng Thunk kết nối API
+import { updateUserProfileOnServer } from "@/src/slices/profileSlice";
 import { useFocusEffect } from "@react-navigation/native";
-import * as ImagePicker from "expo-image-picker"; // Import thư viện ảnh
+import * as ImagePicker from "expo-image-picker";
+
+// API Backend của bạn
+const API_UPLOAD_URL =
+  "https://educationappbackend-4inf.onrender.com/api/upload";
 
 export default function EditProfileScreen() {
   const router = useRouter();
@@ -32,6 +38,9 @@ export default function EditProfileScreen() {
   const [localPhone, setLocalPhone] = useState(phone || "");
   const [localAvatar, setLocalAvatar] = useState(avatar || "");
 
+  // Thêm state loading để khóa UI trong lúc gọi API
+  const [isLoading, setIsLoading] = useState(false);
+
   // Load lại dữ liệu khi màn hình được focus
   useFocusEffect(
     useCallback(() => {
@@ -41,17 +50,76 @@ export default function EditProfileScreen() {
     }, [fullName, phone, avatar]),
   );
 
-  const handleUpdate = () => {
-    // Truyền thêm avatar vào hàm updateProfile
-    dispatch(
-      updateProfile({
-        name: localName,
-        phone: localPhone,
-        avatar: localAvatar,
-      }),
-    );
-    Alert.alert("Thành công", "Hồ sơ của bạn đã được cập nhật!");
-    router.back();
+  // Hàm phụ trợ: Đẩy ảnh lên server (Cloudinary)
+  const uploadImageToServer = async (imageUri) => {
+    const formData = new FormData();
+
+    // Trích xuất tên và định dạng file
+    const filename = imageUri.split("/").pop();
+    const match = /\.(\w+)$/.exec(filename);
+    const type = match ? `image/${match[1]}` : `image/jpeg`;
+
+    formData.append("image", {
+      uri: imageUri,
+      name: filename,
+      type: type,
+    });
+
+    const response = await fetch(API_UPLOAD_URL, {
+      method: "POST",
+      body: formData,
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error("Lỗi kết nối khi upload ảnh lên server.");
+    }
+
+    const data = await response.json();
+    return data.imageUrl; // Trả về URL an toàn từ Cloudinary
+  };
+
+  // Cập nhật hàm handleUpdate thành bất đồng bộ (async)
+  const handleUpdate = async () => {
+    // Basic validation
+    if (!localName.trim()) {
+      Alert.alert("Lỗi", "Họ và tên không được để trống.");
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      let finalAvatarUrl = localAvatar;
+
+      // Nếu chọn ảnh mới từ thư viện máy (ảnh local bắt đầu bằng file://)
+      if (localAvatar && !localAvatar.startsWith("http")) {
+        finalAvatarUrl = await uploadImageToServer(localAvatar);
+      }
+
+      // Gọi Thunk đẩy dữ liệu lên Database
+      await dispatch(
+        updateUserProfileOnServer({
+          fullName: localName,
+          phone: localPhone,
+          avatar: finalAvatarUrl,
+        }),
+      ).unwrap();
+
+      Alert.alert("Thành công", "Hồ sơ của bạn đã được cập nhật!");
+      router.back();
+    } catch (error) {
+      console.error("Lỗi cập nhật:", error);
+      Alert.alert(
+        "Lỗi",
+        typeof error === "string"
+          ? error
+          : "Không thể cập nhật hồ sơ lúc này. Vui lòng thử lại!",
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleLogout = () => {
@@ -69,7 +137,8 @@ export default function EditProfileScreen() {
   };
 
   const handlePickAvatar = async () => {
-    // 1. Xin quyền truy cập thư viện ảnh
+    if (isLoading) return; // Không cho thao tác khi đang loading
+
     const permissionResult =
       await ImagePicker.requestMediaLibraryPermissionsAsync();
 
@@ -81,17 +150,14 @@ export default function EditProfileScreen() {
       return;
     }
 
-    // 2. Mở thư viện ảnh
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true, // Bật tính năng cắt ảnh
-      aspect: [1, 1], // Ép cắt theo tỉ lệ vuông 1:1
-      quality: 0.8, // Giảm chất lượng nhẹ để tối ưu hiệu năng
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
     });
 
-    // 3. Nếu người dùng chọn ảnh (không bấm hủy)
     if (!result.canceled) {
-      // Lưu đường dẫn ảnh mới vào state
       setLocalAvatar(result.assets[0].uri);
     }
   };
@@ -106,8 +172,13 @@ export default function EditProfileScreen() {
           <TouchableOpacity
             onPress={() => router.back()}
             style={styles.backButton}
+            disabled={isLoading} // Khóa nút back khi đang lưu
           >
-            <Ionicons name="arrow-back" size={24} color="#111827" />
+            <Ionicons
+              name="arrow-back"
+              size={24}
+              color={isLoading ? "#9CA3AF" : "#111827"}
+            />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Chỉnh sửa hồ sơ</Text>
           <View style={styles.dummyView} />
@@ -131,8 +202,12 @@ export default function EditProfileScreen() {
                 style={styles.avatar}
               />
               <TouchableOpacity
-                style={styles.editIcon}
+                style={[
+                  styles.editIcon,
+                  isLoading && { backgroundColor: "#9CA3AF" },
+                ]}
                 onPress={handlePickAvatar}
+                disabled={isLoading}
               >
                 <Ionicons name="camera" size={20} color="white" />
               </TouchableOpacity>
@@ -141,7 +216,9 @@ export default function EditProfileScreen() {
 
           <View style={styles.formContainer}>
             <Text style={styles.label}>Họ và tên</Text>
-            <View style={styles.inputWrapper}>
+            <View
+              style={[styles.inputWrapper, isLoading && styles.inputDisabled]}
+            >
               <Ionicons
                 name="person-outline"
                 size={20}
@@ -154,11 +231,14 @@ export default function EditProfileScreen() {
                 onChangeText={setLocalName}
                 placeholder="Nhập họ và tên"
                 placeholderTextColor="#9CA3AF"
+                editable={!isLoading}
               />
             </View>
 
             <Text style={styles.label}>Số điện thoại</Text>
-            <View style={styles.inputWrapper}>
+            <View
+              style={[styles.inputWrapper, isLoading && styles.inputDisabled]}
+            >
               <Ionicons
                 name="call-outline"
                 size={20}
@@ -172,6 +252,7 @@ export default function EditProfileScreen() {
                 placeholder="Nhập số điện thoại"
                 placeholderTextColor="#9CA3AF"
                 keyboardType="phone-pad"
+                editable={!isLoading}
               />
             </View>
 
@@ -193,13 +274,25 @@ export default function EditProfileScreen() {
           </View>
 
           <View style={styles.actionContainer}>
-            <TouchableOpacity style={styles.saveButton} onPress={handleUpdate}>
-              <Text style={styles.saveButtonText}>Lưu thay đổi</Text>
+            <TouchableOpacity
+              style={[
+                styles.saveButton,
+                isLoading && styles.saveButtonDisabled,
+              ]}
+              onPress={handleUpdate}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <Text style={styles.saveButtonText}>Lưu thay đổi</Text>
+              )}
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.logoutButton}
+              style={[styles.logoutButton, isLoading && { opacity: 0.5 }]}
               onPress={handleLogout}
+              disabled={isLoading}
             >
               <Ionicons
                 name="log-out-outline"
@@ -333,11 +426,17 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 8,
     elevation: 4,
+    flexDirection: "row",
   },
   saveButtonText: {
     color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "600",
+  },
+  saveButtonDisabled: {
+    backgroundColor: "#A5B4FC",
+    shadowOpacity: 0,
+    elevation: 0,
   },
   logoutButton: {
     flexDirection: "row",

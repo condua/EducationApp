@@ -14,15 +14,18 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Checkbox } from "react-native-paper";
 import { Ionicons, FontAwesome } from "@expo/vector-icons";
-import { Link, useRouter } from "expo-router"; // <-- Thêm useRouter
+import { Link, useRouter } from "expo-router";
 import { useDispatch, useSelector } from "react-redux";
 import { registerUser } from "../src/store/authSlice";
 
+// Định nghĩa màu chủ đạo theo phong cách TopCV
+const PRIMARY_COLOR = "#00B14F";
+const ERROR_COLOR = "#EF4444";
+
 export default function RegisterScreen() {
   const dispatch = useDispatch<any>();
-  const router = useRouter(); // <-- Khởi tạo router
+  const router = useRouter();
 
-  // Lấy trạng thái loading và error từ Redux store
   const { loading, error: reduxError } = useSelector(
     (state: any) => state.auth,
   );
@@ -30,16 +33,20 @@ export default function RegisterScreen() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState(""); // Thêm state nhập lại mật khẩu
   const [secureText, setSecureText] = useState(true);
+  const [secureConfirmText, setSecureConfirmText] = useState(true); // Thêm state ẩn/hiện nhập lại MK
   const [checked, setChecked] = useState(false);
 
-  // Trạng thái lưu lỗi xác thực tại máy (Local Error)
   const [localError, setLocalError] = useState("");
 
   const isFormValid =
-    fullName.trim() && email.trim() && password.trim() && checked;
+    fullName.trim() &&
+    email.trim() &&
+    password.trim() &&
+    confirmPassword.trim() &&
+    checked;
 
-  // <-- Đổi thành async function
   const handleRegister = async () => {
     setLocalError("");
 
@@ -54,8 +61,13 @@ export default function RegisterScreen() {
       return;
     }
 
+    // Kiểm tra mật khẩu nhập lại
+    if (password !== confirmPassword) {
+      setLocalError("Mật khẩu nhập lại không khớp.");
+      return;
+    }
+
     if (isFormValid) {
-      // <-- Đợi kết quả từ Redux Action
       const result = await dispatch(
         registerUser({
           fullName: fullName.trim(),
@@ -64,9 +76,7 @@ export default function RegisterScreen() {
         }),
       );
 
-      // <-- Kiểm tra nếu đăng ký thành công thì chuyển hướng
       if (registerUser.fulfilled.match(result)) {
-        // Tự động vào màn hình chính vì authSlice của bạn đã set isAuthenticated = true
         router.replace("/(tabs)");
       }
     }
@@ -88,7 +98,7 @@ export default function RegisterScreen() {
           {/* Header Section */}
           <View style={styles.headerContainer}>
             <Image
-              source={require("../assets/logo.png")}
+              source={require("../assets/logoMLPA.png")}
               style={styles.logo}
               resizeMode="contain"
             />
@@ -105,13 +115,13 @@ export default function RegisterScreen() {
               <Ionicons
                 name="person-outline"
                 size={20}
-                color="#6B7280"
+                color="#888"
                 style={styles.icon}
               />
               <TextInput
                 style={styles.input}
                 placeholder="Họ và tên"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor="#888"
                 value={fullName}
                 onChangeText={(text) => {
                   setFullName(text);
@@ -126,13 +136,13 @@ export default function RegisterScreen() {
               <Ionicons
                 name="mail-outline"
                 size={20}
-                color="#6B7280"
+                color="#888"
                 style={styles.icon}
               />
               <TextInput
                 style={styles.input}
                 placeholder="Email"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor="#888"
                 value={email}
                 onChangeText={(text) => {
                   setEmail(text);
@@ -148,13 +158,13 @@ export default function RegisterScreen() {
               <Ionicons
                 name="lock-closed-outline"
                 size={20}
-                color="#6B7280"
+                color="#888"
                 style={styles.icon}
               />
               <TextInput
                 style={styles.input}
                 placeholder="Mật khẩu"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor="#888"
                 secureTextEntry={secureText}
                 value={password}
                 onChangeText={(text) => {
@@ -169,7 +179,38 @@ export default function RegisterScreen() {
                 <Ionicons
                   name={secureText ? "eye-off-outline" : "eye-outline"}
                   size={20}
-                  color="#6B7280"
+                  color="#888"
+                />
+              </TouchableOpacity>
+            </View>
+
+            {/* Confirm Password Input */}
+            <View style={styles.inputWrapper}>
+              <Ionicons
+                name="lock-closed-outline"
+                size={20}
+                color="#888"
+                style={styles.icon}
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Nhập lại mật khẩu"
+                placeholderTextColor="#888"
+                secureTextEntry={secureConfirmText}
+                value={confirmPassword}
+                onChangeText={(text) => {
+                  setConfirmPassword(text);
+                  setLocalError("");
+                }}
+              />
+              <TouchableOpacity
+                onPress={() => setSecureConfirmText(!secureConfirmText)}
+                style={styles.eyeIcon}
+              >
+                <Ionicons
+                  name={secureConfirmText ? "eye-off-outline" : "eye-outline"}
+                  size={20}
+                  color="#888"
                 />
               </TouchableOpacity>
             </View>
@@ -179,7 +220,7 @@ export default function RegisterScreen() {
               <Checkbox
                 status={checked ? "checked" : "unchecked"}
                 onPress={() => setChecked(!checked)}
-                color="#4F46E5"
+                color={PRIMARY_COLOR}
                 uncheckedColor="#9CA3AF"
               />
               <Text style={styles.checkboxText}>
@@ -194,7 +235,7 @@ export default function RegisterScreen() {
                 <Ionicons
                   name="alert-circle-outline"
                   size={18}
-                  color="#EF4444"
+                  color={ERROR_COLOR}
                 />
                 <Text style={styles.errorText}>{displayError}</Text>
               </View>
@@ -214,11 +255,6 @@ export default function RegisterScreen() {
               ) : (
                 <>
                   <Text style={styles.signUpText}>Đăng ký</Text>
-                  <Ionicons
-                    name="arrow-forward-outline"
-                    size={20}
-                    color="white"
-                  />
                 </>
               )}
             </TouchableOpacity>
@@ -227,17 +263,17 @@ export default function RegisterScreen() {
           {/* Divider */}
           <View style={styles.dividerContainer}>
             <View style={styles.divider} />
-            <Text style={styles.orText}>Hoặc tiếp tục với</Text>
+            <Text style={styles.orText}>Hoặc đăng nhập bằng</Text>
             <View style={styles.divider} />
           </View>
 
           {/* Social Login */}
           <View style={styles.socialContainer}>
             <TouchableOpacity style={styles.socialButton}>
-              <FontAwesome name="google" size={22} color="#DB4437" />
+              <FontAwesome name="facebook" size={24} color="#1877F2" />
             </TouchableOpacity>
             <TouchableOpacity style={styles.socialButton}>
-              <FontAwesome name="apple" size={22} color="#111827" />
+              <FontAwesome name="google" size={24} color="#DB4437" />
             </TouchableOpacity>
           </View>
 
@@ -255,10 +291,6 @@ export default function RegisterScreen() {
     </SafeAreaView>
   );
 }
-
-// Định nghĩa màu chủ đạo
-const PRIMARY_COLOR = "#4F46E5";
-const ERROR_COLOR = "#EF4444"; // Màu đỏ cho lỗi
 
 const styles = StyleSheet.create({
   safeArea: {
@@ -280,19 +312,19 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   logo: {
-    width: 120,
-    height: 120,
-    marginBottom: 16,
+    width: 130,
+    height: 130,
+    marginBottom: 10,
   },
   title: {
-    fontSize: 28,
-    fontWeight: "700",
-    color: "#111827",
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#222",
     marginBottom: 8,
   },
   subtitle: {
-    fontSize: 15,
-    color: "#6B7280",
+    fontSize: 14,
+    color: "#666",
     textAlign: "center",
     paddingHorizontal: 20,
   },
@@ -302,21 +334,19 @@ const styles = StyleSheet.create({
   inputWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F9FAFB",
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    height: 56,
-    marginBottom: 16,
+    backgroundColor: "#F4F5F7", // Xám nhạt giống đăng nhập
+    borderRadius: 25, // Bo góc mạnh giống đăng nhập
+    paddingHorizontal: 15,
+    height: 52,
+    marginBottom: 15,
   },
   icon: {
-    marginRight: 12,
+    marginRight: 10,
   },
   input: {
     flex: 1,
     fontSize: 16,
-    color: "#111827",
+    color: "#333",
   },
   eyeIcon: {
     padding: 8,
@@ -354,68 +384,63 @@ const styles = StyleSheet.create({
   signUpButton: {
     flexDirection: "row",
     backgroundColor: PRIMARY_COLOR,
-    height: 56,
-    borderRadius: 12,
+    height: 52,
+    borderRadius: 30, // Bo góc mạnh như nút đăng nhập
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: PRIMARY_COLOR,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
+    marginBottom: 10,
   },
   signUpButtonDisabled: {
     backgroundColor: "#9CA3AF",
-    shadowOpacity: 0,
-    elevation: 0,
   },
   signUpText: {
     color: "#FFFFFF",
-    fontSize: 18,
-    fontWeight: "600",
-    marginRight: 8,
+    fontSize: 16,
+    fontWeight: "bold",
   },
   dividerContainer: {
     flexDirection: "row",
     alignItems: "center",
-    marginVertical: 32,
+    marginVertical: 20,
   },
   divider: {
     flex: 1,
     height: 1,
-    backgroundColor: "#E5E7EB",
+    backgroundColor: "#E0E0E0",
   },
   orText: {
-    color: "#6B7280",
-    paddingHorizontal: 16,
+    color: "#666",
+    paddingHorizontal: 10,
     fontSize: 14,
   },
   socialContainer: {
     flexDirection: "row",
     justifyContent: "center",
-    gap: 24,
-    marginBottom: 32,
+    gap: 20,
+    marginBottom: 30,
   },
   socialButton: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
+    backgroundColor: "#fff",
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#E0E0E0",
   },
   footerContainer: {
     alignItems: "center",
     marginTop: "auto",
   },
   signInText: {
-    fontSize: 15,
-    color: "#4B5563",
+    fontSize: 14,
+    color: "#333",
   },
   signInLink: {
     color: PRIMARY_COLOR,
-    fontWeight: "700",
+    fontWeight: "bold",
   },
 });
