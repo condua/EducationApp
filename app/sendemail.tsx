@@ -133,6 +133,11 @@ const SendEmail = () => {
       </View>
 
       <View style={styles.inner}>
+        <Image
+          source={require("../assets/logo.png")}
+          style={styles.logo}
+          resizeMode="contain"
+        />
         <Text style={styles.title}>Quên mật khẩu</Text>
         <Text style={styles.subtitle}>
           Nhập email của bạn để lấy lại mật khẩu
@@ -209,11 +214,16 @@ const styles = StyleSheet.create({
     padding: 8,
     marginLeft: -8,
   },
+
   inner: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingBottom: 150,
+    paddingBottom: 250,
+  },
+  logo: {
+    width: 150,
+    height: 150,
   },
   title: {
     fontSize: 26,

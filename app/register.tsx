@@ -304,7 +304,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingHorizontal: 24,
     paddingTop: 40,
-    paddingBottom: 20,
+    paddingBottom: 80,
     justifyContent: "center",
   },
   headerContainer: {
