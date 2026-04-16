@@ -8,14 +8,20 @@ import {
   StyleSheet,
   Image,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { FontAwesome, Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useDispatch, useSelector } from "react-redux";
-import { RootState } from "@/src/store/store"; // Đảm bảo đường dẫn store đúng
-import { getAllCourses } from "@/src/slices/courseSlice";
+import { RootState } from "@/src/store/store";
+import {
+  getAllCourses,
+  enrollCourse,
+  resetEnrollState,
+} from "@/src/slices/courseSlice"; // Nhớ import enrollCourse và resetEnrollState
 import { fetchCurrentUser } from "@/src/slices/profileSlice";
 import { SafeAreaView } from "react-native-safe-area-context";
+import Toast from "react-native-toast-message"; // Sử dụng Toast cho thông báo đẹp hơn
 
 const categories = [
   "Tất cả",
@@ -34,9 +40,14 @@ export default function CoursesIndexScreen() {
     [key: string]: boolean;
   }>({});
 
-  const { courses, loadingAll } = useSelector(
-    (state: RootState) => state.course,
+  // State để track xem đang đăng ký khóa nào để hiện loading spinner trên đúng nút đó
+  const [enrollingCourseId, setEnrollingCourseId] = useState<string | null>(
+    null,
   );
+
+  // Lấy dữ liệu khóa học và trạng thái đăng ký từ Redux
+  const { courses, loadingAll, enrollLoading, enrollSuccess, enrollError } =
+    useSelector((state: RootState) => state.course);
 
   const { user, enrolledCourses } = useSelector((state: any) => state.profile);
 
@@ -45,11 +56,41 @@ export default function CoursesIndexScreen() {
     dispatch(fetchCurrentUser());
   }, [dispatch]);
 
+  // Lắng nghe sự kiện đăng ký thành công/thất bại
+  useEffect(() => {
+    if (enrollSuccess) {
+      Toast.show({
+        type: "success",
+        text1: "Thành công",
+        text2: "Đã đăng ký khóa học! Bạn có thể bắt đầu học ngay.",
+      });
+      setEnrollingCourseId(null);
+      dispatch(resetEnrollState());
+      dispatch(fetchCurrentUser()); // Cập nhật lại danh sách khóa đã đăng ký
+    }
+
+    if (enrollError) {
+      Toast.show({
+        type: "error",
+        text1: "Lỗi đăng ký",
+        text2: enrollError,
+      });
+      setEnrollingCourseId(null);
+      dispatch(resetEnrollState());
+    }
+  }, [enrollSuccess, enrollError, dispatch]);
+
   const toggleBookmark = (id: string) => {
     setBookmarkedCourses((prev) => ({
       ...prev,
       [id]: !prev[id],
     }));
+  };
+
+  // Hàm xử lý đăng ký ngay từ danh sách
+  const handleEnroll = (courseId: string) => {
+    setEnrollingCourseId(courseId);
+    dispatch(enrollCourse(courseId));
   };
 
   const filteredCourses = (courses || [])
@@ -166,12 +207,13 @@ export default function CoursesIndexScreen() {
           renderItem={({ item }) => {
             const isEnrolled =
               enrolledCourses && enrolledCourses.includes(item._id);
+            const isThisCourseEnrolling =
+              enrollingCourseId === item._id && enrollLoading;
 
             return (
               <TouchableOpacity
                 style={styles.courseCard}
                 onPress={() =>
-                  // Điều hướng chuẩn xác dựa theo cấu trúc thư mục của bạn
                   router.push({
                     pathname: "/(tabs)/courses/detail",
                     params: { id: item._id },
@@ -199,8 +241,24 @@ export default function CoursesIndexScreen() {
 
                   <View style={styles.footerCard}>
                     <Text style={styles.price}>{item.price}</Text>
-                    {isEnrolled && (
+
+                    {/* KHU VỰC NÚT ĐĂNG KÝ / THẺ ĐÃ ĐĂNG KÝ */}
+                    {isEnrolled ? (
                       <Text style={styles.enrolledTag}>Đã đăng ký</Text>
+                    ) : (
+                      <TouchableOpacity
+                        style={styles.enrollButtonSmall}
+                        onPress={() => handleEnroll(item._id)}
+                        disabled={enrollLoading}
+                      >
+                        {isThisCourseEnrolling ? (
+                          <ActivityIndicator size="small" color="#FFF" />
+                        ) : (
+                          <Text style={styles.enrollButtonSmallText}>
+                            Đăng ký
+                          </Text>
+                        )}
+                      </TouchableOpacity>
                     )}
                   </View>
                 </View>
@@ -246,8 +304,8 @@ export default function CoursesIndexScreen() {
 const PRIMARY_COLOR = "#4F46E5";
 
 const styles = StyleSheet.create({
+  // ... (giữ nguyên các style cũ của bạn)
   container: { flex: 1, backgroundColor: "#F9FAFB" },
-
   centerContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
   header: {
     width: "100%",
@@ -261,24 +319,21 @@ const styles = StyleSheet.create({
     borderColor: "#E5E7EB",
     marginBottom: 18,
   },
-  backButton: {
-    padding: 4,
-  },
+  backButton: { padding: 4 },
   headerTitle: {
     fontSize: 18,
     fontWeight: "bold",
     color: "#111827",
     textAlign: "center",
   },
-  headerRight: {
-    width: 32, // Để cân bằng với nút back giúp title nằm giữa
-  },
+  headerRight: { width: 32 },
   tabContainer: {
     flexDirection: "row",
     backgroundColor: "#E5E7EB",
     borderRadius: 12,
     padding: 4,
     marginBottom: 16,
+    marginHorizontal: 16,
   },
   tabButton: {
     flex: 1,
@@ -296,7 +351,11 @@ const styles = StyleSheet.create({
   },
   tabText: { fontSize: 15, fontWeight: "600", color: "#6B7280" },
   tabTextActive: { color: PRIMARY_COLOR },
-  categoryContainer: { flexDirection: "row", marginBottom: 16 },
+  categoryContainer: {
+    flexDirection: "row",
+    marginBottom: 16,
+    paddingHorizontal: 16,
+  },
   categoryButton: {
     minWidth: 90,
     height: 40,
@@ -321,6 +380,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 12,
     marginBottom: 16,
+    marginHorizontal: 16,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.05,
@@ -364,9 +424,24 @@ const styles = StyleSheet.create({
     backgroundColor: "#D1FAE5",
     color: "#065F46",
     paddingHorizontal: 6,
-    paddingVertical: 2,
+    paddingVertical: 4,
     borderRadius: 4,
     fontWeight: "600",
   },
   bookmarkWrapper: { padding: 4 },
+
+  // Style bổ sung cho nút đăng ký nhỏ trên thẻ
+  enrollButtonSmall: {
+    backgroundColor: PRIMARY_COLOR,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+    minWidth: 70, // Đảm bảo nút không bị co rúm khi loading
+    alignItems: "center",
+  },
+  enrollButtonSmallText: {
+    color: "#FFF",
+    fontSize: 12,
+    fontWeight: "bold",
+  },
 });

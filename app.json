@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "myapp",
+    "scheme": "educationapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
@@ -36,7 +36,7 @@
       ],
       "expo-font",
       "expo-web-browser",
-      "@react-native-community/datetimepicker",
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true

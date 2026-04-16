@@ -261,21 +261,21 @@ export default function RegisterScreen() {
           </View>
 
           {/* Divider */}
-          <View style={styles.dividerContainer}>
+          {/* <View style={styles.dividerContainer}>
             <View style={styles.divider} />
             <Text style={styles.orText}>Hoặc đăng nhập bằng</Text>
             <View style={styles.divider} />
-          </View>
+          </View> */}
 
           {/* Social Login */}
-          <View style={styles.socialContainer}>
+          {/* <View style={styles.socialContainer}>
             <TouchableOpacity style={styles.socialButton}>
               <FontAwesome name="facebook" size={24} color="#1877F2" />
             </TouchableOpacity>
             <TouchableOpacity style={styles.socialButton}>
               <FontAwesome name="google" size={24} color="#DB4437" />
             </TouchableOpacity>
-          </View>
+          </View> */}
 
           {/* Footer */}
           <View style={styles.footerContainer}>
@@ -312,9 +312,9 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   logo: {
-    width: 130,
-    height: 130,
-    marginBottom: 10,
+    width: 180,
+    height: 180,
+    marginBottom: 0,
   },
   title: {
     fontSize: 24,
@@ -433,7 +433,7 @@ const styles = StyleSheet.create({
   },
   footerContainer: {
     alignItems: "center",
-    marginTop: "auto",
+    // marginTop: "auto",
   },
   signInText: {
     fontSize: 14,
