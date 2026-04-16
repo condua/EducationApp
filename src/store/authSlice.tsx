@@ -77,6 +77,42 @@ export const loginUser = createAsyncThunk(
   },
 );
 
+// 🟢 THÊM MỚI: Thunk Đăng nhập bằng Google
+export const googleLogin = createAsyncThunk(
+  "auth/googleLogin",
+  async (idToken: string, { dispatch, rejectWithValue }) => {
+    try {
+      // Đổi đuôi endpoint thành api backend của bạn xử lý google login
+      const response = await fetch(`${API_URL}/google-login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: idToken }), // Gửi idToken với tên trường 'token'
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error || data.message || "Đăng nhập Google thất bại",
+        );
+      }
+
+      // Backend Google Login trả về 'accessToken' thay vì 'token', nên cần lấy đúng trường
+      const tokenToSave = data.accessToken || data.token;
+
+      if (tokenToSave) {
+        await AsyncStorage.setItem("userToken", tokenToSave);
+        await AsyncStorage.setItem("userData", JSON.stringify(data.user));
+      }
+
+      dispatch(updateProfile(data.user));
+
+      return data;
+    } catch (error: any) {
+      return rejectWithValue(error.message);
+    }
+  },
+);
 // Thunk: Đăng ký
 export const registerUser = createAsyncThunk(
   "auth/registerUser",
@@ -209,6 +245,22 @@ export const authSlice = createSlice({
         state.error = action.payload as string;
       })
 
+      // ---------------- 🟢 TRẠNG THÁI ĐĂNG NHẬP BẰNG GOOGLE ----------------
+      .addCase(googleLogin.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(googleLogin.fulfilled, (state, action) => {
+        state.loading = false;
+        state.isAuthenticated = true;
+        state.user = action.payload.user;
+        // Sử dụng accessToken hoặc token tùy theo backend trả về
+        state.token = action.payload.accessToken || action.payload.token;
+      })
+      .addCase(googleLogin.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
       // ---------------- TRẠNG THÁI ĐĂNG KÝ ----------------
       .addCase(registerUser.pending, (state) => {
         state.loading = true;

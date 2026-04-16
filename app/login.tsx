@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -6,14 +6,31 @@ import {
   TouchableOpacity,
   StyleSheet,
   Image,
-  Alert,
 } from "react-native";
 import { useDispatch, useSelector } from "react-redux";
-import { loginUser } from "../src/store/authSlice";
-import { useRouter, Link, useNavigation } from "expo-router";
+import { loginUser, googleLogin } from "../src/store/authSlice";
+import { useRouter, Link } from "expo-router";
 import { Ionicons, FontAwesome } from "@expo/vector-icons";
 import { RootState } from "@/src/store/store";
-import Toast from "react-native-toast-message"; // <-- Import thư viện Toast
+import Toast from "react-native-toast-message";
+
+// 🟢 1. Import các thư viện mới của Expo
+import * as WebBrowser from "expo-web-browser";
+import {
+  useAuthRequest,
+  makeRedirectUri,
+  ResponseType,
+} from "expo-auth-session";
+
+// 🟢 2. Cần thiết để tắt trình duyệt web sau khi có kết quả
+WebBrowser.maybeCompleteAuthSession();
+
+// Cấu hình endpoint của Google
+const discovery = {
+  authorizationEndpoint: "https://accounts.google.com/o/oauth2/v2/auth",
+  tokenEndpoint: "https://oauth2.googleapis.com/token",
+  revocationEndpoint: "https://oauth2.googleapis.com/revoke",
+};
 
 export default function LoginScreen() {
   const dispatch = useDispatch<any>();
@@ -21,20 +38,64 @@ export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [secureText, setSecureText] = useState(true);
-  const { loading, error, isAuthenticated } = useSelector(
-    (state: RootState) => state.auth,
+  const { loading, error } = useSelector((state: RootState) => state.auth);
+
+  // 🟢 3. Khởi tạo Hook Đăng nhập Google
+  const [request, response, promptAsync] = useAuthRequest(
+    {
+      // Thay bằng Client ID của Web bạn tạo trên Google Cloud Console
+      clientId: "YOUR_WEB_CLIENT_ID.apps.googleusercontent.com",
+      scopes: ["openid", "profile", "email"],
+      // Yêu cầu trả thẳng về id_token
+      responseType: ResponseType.IdToken,
+      redirectUri: makeRedirectUri({
+        scheme: "educationapp", // Trùng khớp với chữ bạn điền trong app.json
+      }),
+    },
+    discovery,
   );
 
-  const navigate = useNavigation();
+  // 🟢 4. Lắng nghe kết quả trả về sau khi trình duyệt đóng lại
+  useEffect(() => {
+    if (response?.type === "success") {
+      const { id_token } = response.params; // Lấy được id_token
+
+      if (id_token) {
+        // Gửi id_token lên Redux thunk
+        dispatch(googleLogin(id_token))
+          .unwrap()
+          .then(() => {
+            Toast.show({
+              type: "success",
+              text1: "Thành công",
+              text2: "Đăng nhập Google thành công!",
+              visibilityTime: 2000,
+            });
+            setTimeout(() => router.replace("/(tabs)"), 1000);
+          })
+          .catch((err: any) => {
+            Toast.show({
+              type: "error",
+              text1: "Lỗi Server",
+              text2: err || "Không thể xác thực với máy chủ.",
+            });
+          });
+      }
+    } else if (response?.type === "error" || response?.type === "dismiss") {
+      Toast.show({
+        type: "info",
+        text1: "Đã hủy",
+        text2: "Bạn đã đóng khung đăng nhập.",
+      });
+    }
+  }, [response]);
+
   const handleLogin = async () => {
     if (!email || !password) {
-      // Sử dụng Toast hiển thị cảnh báo (Warning)
       Toast.show({
-        type: "error", // Có thể là 'success', 'error', hoặc 'info'
+        type: "error",
         text1: "Lỗi đăng nhập",
         text2: "Vui lòng nhập cả email và mật khẩu.",
-        position: "top", // Hiện từ trên xuống
-        visibilityTime: 3000, // Tự động ẩn sau 3 giây
       });
       return;
     }
@@ -42,24 +103,17 @@ export default function LoginScreen() {
     const result = await dispatch(loginUser({ email, password }));
 
     if (loginUser.fulfilled.match(result)) {
-      // Toast thông báo thành công (Tùy chọn)
       Toast.show({
         type: "success",
         text1: "Thành công",
-        text2: "Đăng nhập thành công, đang chuyển hướng...",
-        visibilityTime: 2000,
+        text2: "Đang chuyển hướng...",
       });
-
-      // Chuyển hướng sau một khoảng trễ ngắn để người dùng kịp đọc
-      setTimeout(() => {
-        router.replace("/(tabs)");
-      }, 1000);
+      setTimeout(() => router.replace("/(tabs)"), 1000);
     } else {
-      // Toast báo lỗi thất bại
       Toast.show({
         type: "error",
         text1: "Đăng nhập thất bại",
-        text2: result.payload || "Đã xảy ra lỗi không xác định.",
+        text2: result.payload as string,
       });
     }
   };
@@ -67,7 +121,7 @@ export default function LoginScreen() {
   return (
     <View style={styles.container}>
       {/* Logo */}
-      <Image source={require("../assets/logoMLPA.png")} style={styles.logo} />
+      <Image source={require("../assets/logo.png")} style={styles.logo} />
 
       {/* Title */}
       <Text style={styles.title}>Chào mừng bạn</Text>
@@ -89,6 +143,8 @@ export default function LoginScreen() {
           placeholderTextColor="#888"
           value={email}
           onChangeText={setEmail}
+          autoCapitalize="none"
+          keyboardType="email-address"
         />
       </View>
 
@@ -123,8 +179,14 @@ export default function LoginScreen() {
       </Link>
 
       {/* Sign In Button */}
-      <TouchableOpacity style={styles.signUpButton} onPress={handleLogin}>
-        <Text style={styles.signUpText}>Đăng nhập</Text>
+      <TouchableOpacity
+        style={styles.signUpButton}
+        onPress={handleLogin}
+        disabled={loading}
+      >
+        <Text style={styles.signUpText}>
+          {loading ? "Đang xử lý..." : "Đăng nhập"}
+        </Text>
       </TouchableOpacity>
 
       <View style={styles.dividerContainer}>
@@ -138,7 +200,13 @@ export default function LoginScreen() {
         <TouchableOpacity style={styles.socialButton}>
           <FontAwesome name="facebook" size={24} color="#1877F2" />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.socialButton}>
+
+        {/* 🟢 Gọi hàm promptAsync() khi bấm nút Google */}
+        <TouchableOpacity
+          style={styles.socialButton}
+          disabled={!request || loading}
+          onPress={() => promptAsync()}
+        >
           <FontAwesome name="google" size={24} color="#DB4437" />
         </TouchableOpacity>
       </View>
@@ -160,7 +228,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFFFFF", // Đổi nền thành màu trắng tinh
+    backgroundColor: "#FFFFFF",
     alignItems: "center",
     justifyContent: "center",
     padding: 20,
@@ -187,10 +255,10 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F4F5F7", // Đổi nền input thành xám nhạt
+    backgroundColor: "#F4F5F7",
     paddingHorizontal: 15,
     paddingVertical: 14,
-    borderRadius: 25, // Bo góc nhiều hơn giống ảnh
+    borderRadius: 25,
     width: "100%",
     marginBottom: 15,
   },
@@ -205,13 +273,13 @@ const styles = StyleSheet.create({
   checkboxContainer: {
     textAlign: "right",
     width: "100%",
-    color: "#00B14F", // Đổi màu chữ link thành xanh lá cây
+    color: "#00B14F",
     marginBottom: 25,
     fontWeight: "500",
   },
   signUpButton: {
     flexDirection: "row",
-    backgroundColor: "#00B14F", // Đổi màu nút thành xanh lá cây TopCV
+    backgroundColor: "#00B14F",
     paddingVertical: 14,
     paddingHorizontal: 20,
     borderRadius: 30,
@@ -256,7 +324,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "#E0E0E0", // Viền mỏng thay vì shadow đậm
+    borderColor: "#E0E0E0",
   },
   footerContainer: {
     marginTop: 10,
@@ -266,7 +334,7 @@ const styles = StyleSheet.create({
     color: "#333",
   },
   signInLink: {
-    color: "#00B14F", // Đổi màu chữ link thành xanh lá cây
+    color: "#00B14F",
     fontWeight: "bold",
   },
 });

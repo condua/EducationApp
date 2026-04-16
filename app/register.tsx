@@ -98,7 +98,7 @@ export default function RegisterScreen() {
           {/* Header Section */}
           <View style={styles.headerContainer}>
             <Image
-              source={require("../assets/logoMLPA.png")}
+              source={require("../assets/logo.png")}
               style={styles.logo}
               resizeMode="contain"
             />
