@@ -6,6 +6,9 @@ import {
   TouchableOpacity,
   StyleSheet,
   Image,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
 } from "react-native";
 import { useDispatch, useSelector } from "react-redux";
 import { loginUser, googleLogin } from "../src/store/authSlice";
@@ -151,106 +154,117 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Logo */}
-      <Image source={require("../assets/logo.png")} style={styles.logo} />
-
-      {/* Title */}
-      <Text style={styles.title}>Chào mừng bạn</Text>
-      <Text style={styles.subtitle}>
-        Đến với MLPA! Hãy đăng nhập để tiếp tục trải nghiệm.
-      </Text>
-
-      {/* Email Input */}
-      <View style={styles.inputContainer}>
-        <Ionicons
-          name="mail-outline"
-          size={20}
-          color="#888"
-          style={styles.icon}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          placeholderTextColor="#888"
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-          keyboardType="email-address"
-        />
-      </View>
-
-      {/* Password Input */}
-      <View style={styles.inputContainer}>
-        <Ionicons
-          name="lock-closed-outline"
-          size={20}
-          color="#888"
-          style={styles.icon}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Nhập mật khẩu"
-          placeholderTextColor="#888"
-          secureTextEntry={secureText}
-          value={password}
-          onChangeText={setPassword}
-        />
-        <TouchableOpacity onPress={() => setSecureText(!secureText)}>
-          <Ionicons
-            name={secureText ? "eye-off-outline" : "eye-outline"}
-            size={20}
-            color="#888"
-          />
-        </TouchableOpacity>
-      </View>
-
-      {/* Terms & Conditions / Forgot Password */}
-      <Link style={styles.checkboxContainer} href={"/sendemail"}>
-        Quên mật khẩu?
-      </Link>
-
-      {/* Sign In Button */}
-      <TouchableOpacity
-        style={styles.signUpButton}
-        onPress={handleLogin}
-        disabled={loading}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.keyboardView}
       >
-        <Text style={styles.signUpText}>
-          {loading ? "Đang xử lý..." : "Đăng nhập"}
-        </Text>
-      </TouchableOpacity>
+        <ScrollView
+          contentContainerStyle={styles.scrollContainer}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Logo */}
+          <Image source={require("../assets/logo.png")} style={styles.logo} />
 
-      {/* <View style={styles.dividerContainer}>
+          {/* Title */}
+          <Text style={styles.title}>Chào mừng bạn</Text>
+          <Text style={styles.subtitle}>
+            Đến với MLPA! Hãy đăng nhập để tiếp tục trải nghiệm.
+          </Text>
+
+          {/* Email Input */}
+          <View style={styles.inputContainer}>
+            <Ionicons
+              name="mail-outline"
+              size={20}
+              color="#888"
+              style={styles.icon}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Email"
+              placeholderTextColor="#888"
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+            />
+          </View>
+
+          {/* Password Input */}
+          <View style={styles.inputContainer}>
+            <Ionicons
+              name="lock-closed-outline"
+              size={20}
+              color="#888"
+              style={styles.icon}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Nhập mật khẩu"
+              placeholderTextColor="#888"
+              secureTextEntry={secureText}
+              value={password}
+              onChangeText={setPassword}
+            />
+            <TouchableOpacity onPress={() => setSecureText(!secureText)}>
+              <Ionicons
+                name={secureText ? "eye-off-outline" : "eye-outline"}
+                size={20}
+                color="#888"
+              />
+            </TouchableOpacity>
+          </View>
+
+          {/* Terms & Conditions / Forgot Password */}
+          <Link style={styles.checkboxContainer} href={"/sendemail"}>
+            Quên mật khẩu?
+          </Link>
+
+          {/* Sign In Button */}
+          <TouchableOpacity
+            style={styles.signUpButton}
+            onPress={handleLogin}
+            disabled={loading}
+          >
+            <Text style={styles.signUpText}>
+              {loading ? "Đang xử lý..." : "Đăng nhập"}
+            </Text>
+          </TouchableOpacity>
+
+          {/* <View style={styles.dividerContainer}>
         <View style={styles.divider} />
         <Text style={styles.orText}>Hoặc đăng nhập bằng</Text>
         <View style={styles.divider} />
       </View> */}
 
-      {/* Social Login */}
-      <View style={styles.socialContainer}>
-        {/* <TouchableOpacity style={styles.socialButton}>
+          {/* Social Login */}
+          <View style={styles.socialContainer}>
+            {/* <TouchableOpacity style={styles.socialButton}>
           <FontAwesome name="facebook" size={24} color="#1877F2" />
         </TouchableOpacity> */}
 
-        {/* 🟢 Nút Đăng nhập Google */}
-        {/* <TouchableOpacity
+            {/* 🟢 Nút Đăng nhập Google */}
+            {/* <TouchableOpacity
           style={styles.socialButton}
           disabled={!request || loading}
           onPress={() => promptAsync()}
         >
           <FontAwesome name="google" size={24} color="#DB4437" />
         </TouchableOpacity> */}
-      </View>
+          </View>
 
-      {/* Sign Up Link */}
-      <View style={styles.footerContainer}>
-        <Text style={styles.signInText}>
-          Bạn chưa có tài khoản?{" "}
-          <Link style={styles.signInLink} href={"/register"}>
-            Đăng ký ngay
-          </Link>
-        </Text>
-      </View>
+          {/* Sign Up Link */}
+          <View style={styles.footerContainer}>
+            <Text style={styles.signInText}>
+              Bạn chưa có tài khoản?{" "}
+              <Link style={styles.signInLink} href={"/register"}>
+                Đăng ký ngay
+              </Link>
+            </Text>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }
@@ -260,9 +274,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#FFFFFF",
-    alignItems: "center",
+  },
+  keyboardView: {
+    flex: 1,
+  },
+  scrollContainer: {
+    flexGrow: 1,
+    paddingHorizontal: 24,
+    paddingTop: 40,
+    paddingBottom: 80,
     justifyContent: "center",
-    padding: 20,
+    alignItems: "center",
   },
   logo: {
     width: 180,
