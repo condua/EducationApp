@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "914193048655",
+    "project_id": "directed-asset-459105-t2",
+    "storage_bucket": "directed-asset-459105-t2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:914193048655:android:acefc18aed76975510f63a",
+        "android_client_info": {
+          "package_name": "com.condua1755.EduacationApp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "914193048655-r1b088mh55u9hsi7qkk79qf8c7tff7de.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCxnWBFX5MfLiV7FlIelxjypj0CFWttrf0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "914193048655-bkv2rhirk4gk995ah6ge1m9bccc8c8v4.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

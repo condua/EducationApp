@@ -17,30 +17,20 @@ import { Ionicons, FontAwesome } from "@expo/vector-icons";
 import { RootState } from "@/src/store/store";
 import Toast from "react-native-toast-message";
 
-// 🟢 1. Import thư viện của Expo Auth Session --
-import * as WebBrowser from "expo-web-browser";
+// 🟢 1. Import thư viện Google Signin Native
 import {
-  useAuthRequest,
-  makeRedirectUri,
-  exchangeCodeAsync,
-} from "expo-auth-session";
+  GoogleSignin,
+  statusCodes,
+  isErrorWithCode,
+} from "@react-native-google-signin/google-signin";
 
-// 🟢 2. Cần thiết để tắt trình duyệt web sau khi có kết quả
-WebBrowser.maybeCompleteAuthSession();
-
-// 🟢 3. Cấu hình Endpoint và Client ID của Google
-const discovery = {
-  authorizationEndpoint: "https://accounts.google.com/o/oauth2/v2/auth",
-  tokenEndpoint: "https://oauth2.googleapis.com/token",
-  revocationEndpoint: "https://oauth2.googleapis.com/revoke",
-};
-
-// ⚠️ THAY BẰNG WEB CLIENT ID CỦA BẠN (TRÊN GOOGLE CLOUD CONSOLE)
-const GOOGLE_CLIENT_ID =
-  "914193048655-5h99s2vr1kamth2olb27kbek1o8d7v35.apps.googleusercontent.com";
-// Tạo URI chuyển hướng (Bắt buộc scheme phải giống trong file app.json)
-const REDIRECT_URI = makeRedirectUri({
-  scheme: "educationapp",
+// 🟢 2. Cấu hình Google Signin (Nên đặt ngoài component hoặc trong useEffect một lần)
+GoogleSignin.configure({
+  // Web Client ID của bạn để lấy id_token gửi về backend
+  webClientId:
+    "914193048655-r1b088mh55u9hsi7qkk79qf8c7tff7de.apps.googleusercontent.com",
+  // iosClientId: "THAY_BANG_IOS_CLIENT_ID_CUA_BAN.apps.googleusercontent.com",
+  scopes: ["profile", "email"],
 });
 
 export default function LoginScreen() {
@@ -51,79 +41,85 @@ export default function LoginScreen() {
   const [secureText, setSecureText] = useState(true);
   const { loading, error } = useSelector((state: RootState) => state.auth);
 
-  // 🟢 4. Khởi tạo Hook Đăng nhập Google (Dùng Authorization Code Flow)
-  const [request, response, promptAsync] = useAuthRequest(
-    {
-      clientId: GOOGLE_CLIENT_ID,
-      scopes: ["openid", "profile", "email"],
-      redirectUri: REDIRECT_URI,
-    },
-    discovery,
-  );
+  // 🟢 3. Hàm xử lý đăng nhập Google Native
+  const handleGoogleLogin = async () => {
+    try {
+      // Đảm bảo thiết bị Android có Google Play Services
+      await GoogleSignin.hasPlayServices({
+        showPlayServicesUpdateDialog: true,
+      });
 
-  // 🟢 5. Lắng nghe kết quả trả về và xử lý đổi Code -> id_token
-  useEffect(() => {
-    if (response?.type === "success") {
-      const { code } = response.params;
+      // Gọi SDK mở popup đăng nhập (chạm 1 lần)
+      const userInfo = await GoogleSignin.signIn();
+      const idToken = userInfo.data?.idToken; // Lưu ý: bản mới userInfo.data.idToken
 
-      if (code && request?.codeVerifier) {
-        // Gọi API ngầm để đổi mã code lấy token bảo mật
-        exchangeCodeAsync(
-          {
-            clientId: GOOGLE_CLIENT_ID,
-            code,
-            redirectUri: REDIRECT_URI,
-            extraParams: {
-              code_verifier: request.codeVerifier,
-            },
-          },
-          discovery,
-        )
-          .then((tokenResponse) => {
-            // Lấy được id_token thành công
-            const id_token = tokenResponse.idToken;
-
-            if (id_token) {
-              // Gửi id_token lên Redux thunk để gửi về Backend
-              dispatch(googleLogin(id_token))
-                .unwrap()
-                .then(() => {
-                  Toast.show({
-                    type: "success",
-                    text1: "Thành công",
-                    text2: "Đăng nhập Google thành công!",
-                    visibilityTime: 2000,
-                  });
-                  setTimeout(() => router.replace("/(tabs)"), 1000);
-                })
-                .catch((err: any) => {
-                  Toast.show({
-                    type: "error",
-                    text1: "Lỗi Server",
-                    text2: err || "Không thể xác thực với máy chủ.",
-                  });
-                });
-            }
+      if (idToken) {
+        // Gửi id_token lên Redux thunk để gửi về Backend
+        dispatch(googleLogin(idToken))
+          .unwrap()
+          .then(() => {
+            Toast.show({
+              type: "success",
+              text1: "Thành công",
+              text2: "Đăng nhập Google thành công!",
+              visibilityTime: 2000,
+            });
+            setTimeout(() => router.replace("/(tabs)"), 1000);
           })
-          .catch((err) => {
-            console.error("Lỗi khi đổi Google Code lấy Token:", err);
+          .catch((err: any) => {
             Toast.show({
               type: "error",
-              text1: "Lỗi xác thực",
-              text2: "Không thể lấy thông tin từ Google.",
+              text1: "Lỗi Server",
+              text2: err || "Không thể xác thực với máy chủ.",
             });
+            console.error("Lỗi khi gửi id_token về backend:", err);
+            console.log("ID Token đã gửi:", idToken);
           });
       }
-    } else if (response?.type === "error" || response?.type === "dismiss") {
-      Toast.show({
-        type: "info",
-        text1: "Đã hủy",
-        text2: "Bạn đã đóng khung đăng nhập.",
-      });
+    } catch (error: any) {
+      // Xử lý các mã lỗi phổ biến của Google Signin
+      if (isErrorWithCode(error)) {
+        switch (error.code) {
+          case statusCodes.SIGN_IN_CANCELLED:
+            Toast.show({
+              type: "info",
+              text1: "Đã hủy",
+              text2: "Bạn đã đóng khung đăng nhập.",
+            });
+            break;
+          case statusCodes.IN_PROGRESS:
+            Toast.show({
+              type: "info",
+              text1: "Đang xử lý",
+              text2: "Đăng nhập đang được tiến hành.",
+            });
+            break;
+          case statusCodes.PLAY_SERVICES_NOT_AVAILABLE:
+            Toast.show({
+              type: "error",
+              text1: "Lỗi",
+              text2: "Google Play Services không khả dụng trên thiết bị này.",
+            });
+            break;
+          default:
+            Toast.show({
+              type: "error",
+              text1: "Lỗi Google",
+              text2: error.message,
+            });
+            console.error("Lỗi Google Signin:", error);
+        }
+      } else {
+        Toast.show({
+          type: "error",
+          text1: "Lỗi xác thực",
+          text2: "Có lỗi xảy ra khi đăng nhập Google.",
+        });
+      }
     }
-  }, [response, request]);
+  };
 
-  // 🟢 Hàm xử lý đăng nhập bằng Email/Password
+  // Hàm xử lý đăng nhập bằng Email/Password
   const handleLogin = async () => {
     if (!email || !password) {
       Toast.show({
@@ -216,7 +212,7 @@ export default function LoginScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Terms & Conditions / Forgot Password */}
+          {/* Forgot Password */}
           <Link style={styles.checkboxContainer} href={"/sendemail"}>
             Quên mật khẩu?
           </Link>
@@ -232,26 +228,22 @@ export default function LoginScreen() {
             </Text>
           </TouchableOpacity>
 
-          {/* <View style={styles.dividerContainer}>
-        <View style={styles.divider} />
-        <Text style={styles.orText}>Hoặc đăng nhập bằng</Text>
-        <View style={styles.divider} />
-      </View> */}
+          <View style={styles.dividerContainer}>
+            <View style={styles.divider} />
+            <Text style={styles.orText}>Hoặc đăng nhập bằng</Text>
+            <View style={styles.divider} />
+          </View>
 
           {/* Social Login */}
           <View style={styles.socialContainer}>
-            {/* <TouchableOpacity style={styles.socialButton}>
-          <FontAwesome name="facebook" size={24} color="#1877F2" />
-        </TouchableOpacity> */}
-
-            {/* 🟢 Nút Đăng nhập Google */}
-            {/* <TouchableOpacity
-          style={styles.socialButton}
-          disabled={!request || loading}
-          onPress={() => promptAsync()}
-        >
-          <FontAwesome name="google" size={24} color="#DB4437" />
-        </TouchableOpacity> */}
+            {/* 🟢 4. Nút Đăng nhập Google (Đã mở comment và gắn sự kiện) */}
+            <TouchableOpacity
+              style={styles.socialButton}
+              disabled={loading}
+              onPress={handleGoogleLogin}
+            >
+              <FontAwesome name="google" size={24} color="#DB4437" />
+            </TouchableOpacity>
           </View>
 
           {/* Sign Up Link */}
@@ -269,15 +261,9 @@ export default function LoginScreen() {
   );
 }
 
-// 🟢 Styles giữ nguyên hoàn toàn
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#FFFFFF",
-  },
-  keyboardView: {
-    flex: 1,
-  },
+  container: { flex: 1, backgroundColor: "#FFFFFF" },
+  keyboardView: { flex: 1 },
   scrollContainer: {
     flexGrow: 1,
     paddingHorizontal: 24,
@@ -286,12 +272,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  logo: {
-    width: 180,
-    height: 180,
-    marginBottom: 10,
-    resizeMode: "contain",
-  },
+  logo: { width: 180, height: 180, marginBottom: 10, resizeMode: "contain" },
   title: {
     fontSize: 22,
     fontWeight: "bold",
@@ -315,14 +296,8 @@ const styles = StyleSheet.create({
     width: "100%",
     marginBottom: 15,
   },
-  icon: {
-    marginRight: 10,
-  },
-  input: {
-    flex: 1,
-    fontSize: 16,
-    color: "#333",
-  },
+  icon: { marginRight: 10 },
+  input: { flex: 1, fontSize: 16, color: "#333" },
   checkboxContainer: {
     textAlign: "right",
     width: "100%",
@@ -341,32 +316,16 @@ const styles = StyleSheet.create({
     width: "100%",
     marginBottom: 25,
   },
-  signUpText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
+  signUpText: { color: "#fff", fontSize: 16, fontWeight: "bold" },
   dividerContainer: {
     flexDirection: "row",
     alignItems: "center",
     width: "100%",
     marginBottom: 20,
   },
-  divider: {
-    flex: 1,
-    height: 1,
-    backgroundColor: "#E0E0E0",
-  },
-  orText: {
-    fontSize: 14,
-    color: "#666",
-    marginHorizontal: 10,
-  },
-  socialContainer: {
-    flexDirection: "row",
-    gap: 20,
-    marginBottom: 30,
-  },
+  divider: { flex: 1, height: 1, backgroundColor: "#E0E0E0" },
+  orText: { fontSize: 14, color: "#666", marginHorizontal: 10 },
+  socialContainer: { flexDirection: "row", gap: 20, marginBottom: 30 },
   socialButton: {
     backgroundColor: "#fff",
     paddingVertical: 10,
@@ -379,15 +338,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E0E0E0",
   },
-  footerContainer: {
-    marginTop: 10,
-  },
-  signInText: {
-    fontSize: 14,
-    color: "#333",
-  },
-  signInLink: {
-    color: "#00B14F",
-    fontWeight: "bold",
-  },
+  footerContainer: { marginTop: 10 },
+  signInText: { fontSize: 14, color: "#333" },
+  signInLink: { color: "#00B14F", fontWeight: "bold" },
 });

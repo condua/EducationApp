@@ -16,7 +16,8 @@
         "foregroundImage": "./assets/images/icon_mlpa.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.condua1755.EduacationApp"
+      "package": "com.condua1755.EduacationApp",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "bundler": "metro",
@@ -36,7 +37,8 @@
       ],
       "expo-font",
       "expo-web-browser",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "@react-native-google-signin/google-signin"
     ],
     "experiments": {
       "typedRoutes": true
