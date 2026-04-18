@@ -17,7 +17,7 @@ import { Ionicons, FontAwesome } from "@expo/vector-icons";
 import { RootState } from "@/src/store/store";
 import Toast from "react-native-toast-message";
 
-// 🟢 1. Import thư viện của Expo Auth Session
+// 🟢 1. Import thư viện của Expo Auth Session --
 import * as WebBrowser from "expo-web-browser";
 import {
   useAuthRequest,
