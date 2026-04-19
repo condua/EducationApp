@@ -22,7 +22,8 @@ import { updateUserProfileOnServer } from "@/src/slices/profileSlice";
 import { useFocusEffect } from "@react-navigation/native";
 import * as ImagePicker from "expo-image-picker";
 import DateTimePicker from "@react-native-community/datetimepicker"; // Thêm thư viện ngày tháng
-
+import { GoogleSignin } from "@react-native-google-signin/google-signin";
+import { fetchCurrentUser } from "@/src/slices/profileSlice";
 const API_UPLOAD_URL =
   "https://educationappbackend-4inf.onrender.com/api/upload";
 
@@ -33,8 +34,17 @@ export default function EditProfileScreen() {
   const router = useRouter();
   const dispatch = useDispatch();
 
-  const { fullName, phone, email, avatar, gender, birthDate, address } =
-    useSelector((state) => state.profile);
+  // Lấy thêm trạng thái loading từ profileSlice để hiển thị lúc tải data
+  const {
+    fullName,
+    phone,
+    email,
+    avatar,
+    gender,
+    birthDate,
+    address,
+    loading: isFetching,
+  } = useSelector((state) => state.profile);
 
   const [localName, setLocalName] = useState(fullName || "");
   const [localPhone, setLocalPhone] = useState(phone || "");
@@ -52,16 +62,37 @@ export default function EditProfileScreen() {
   const [showGenderModal, setShowGenderModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
+  // 🟢 LOGIC MỚI: Tải dữ liệu mới nhất từ Server mỗi khi vào màn hình
   useFocusEffect(
     useCallback(() => {
-      setLocalName(fullName || "");
-      setLocalPhone(phone || "");
-      setLocalAvatar(avatar || "");
-      setLocalAddress(address || "");
-      setLocalGender(gender || "");
-      if (birthDate) setLocalBirthDate(new Date(birthDate));
-    }, [fullName, phone, avatar, address, gender, birthDate]),
+      let isMounted = true;
+
+      const loadData = async () => {
+        try {
+          // Gọi API lấy thông tin mới nhất (Xử lý trường hợp đổi account)
+          await dispatch(fetchCurrentUser()).unwrap();
+        } catch (error) {
+          console.error("Không thể tải thông tin mới nhất:", error);
+        }
+      };
+
+      loadData();
+
+      return () => {
+        isMounted = false;
+      };
+    }, [dispatch]),
   );
+
+  // 🟢 LOGIC CŨ CẬP NHẬT: Khi dữ liệu Redux thay đổi, cập nhật local state
+  React.useEffect(() => {
+    setLocalName(fullName || "");
+    setLocalPhone(phone || "");
+    setLocalAvatar(avatar || "");
+    setLocalAddress(address || "");
+    setLocalGender(gender || "");
+    if (birthDate) setLocalBirthDate(new Date(birthDate));
+  }, [fullName, phone, avatar, address, gender, birthDate]);
 
   const uploadImageToServer = async (imageUri) => {
     const formData = new FormData();
@@ -133,9 +164,15 @@ export default function EditProfileScreen() {
       {
         text: "Đăng xuất",
         style: "destructive",
-        onPress: () => {
-          dispatch(logout());
-          router.replace("/login");
+        onPress: async () => {
+          try {
+            await GoogleSignin.signOut(); // đợi logout Google
+          } catch (error) {
+            console.error("Lỗi khi đăng xuất Google:", error);
+          } finally {
+            dispatch(logout()); // luôn logout app
+            router.replace("/login");
+          }
         },
       },
     ]);
@@ -175,7 +212,15 @@ export default function EditProfileScreen() {
     setLocalGender(selected);
     setShowGenderModal(false);
   };
-
+  // Thêm hiển thị loading khi đang tải profile ban đầu
+  if (isFetching && !localName) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" color={PRIMARY_COLOR} />
+        <Text style={{ marginTop: 10 }}>Đang tải thông tin...</Text>
+      </View>
+    );
+  }
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView

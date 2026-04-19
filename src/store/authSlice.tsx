@@ -78,36 +78,35 @@ export const loginUser = createAsyncThunk(
 );
 
 // 🟢 THÊM MỚI: Thunk Đăng nhập bằng Google
+// 🟢 CẬP NHẬT: Thunk Đăng nhập bằng Google
 export const googleLogin = createAsyncThunk(
   "auth/googleLogin",
   async (idToken: string, { dispatch, rejectWithValue }) => {
     try {
-      // Đổi đuôi endpoint thành api backend của bạn xử lý google login
       const response = await fetch(`${API_URL}/google-login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: idToken }), // Gửi idToken với tên trường 'token'
+        body: JSON.stringify({ token: idToken }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(
-          data.error || data.message || "Đăng nhập Google thất bại",
-        );
+        // Backend mới trả về { message: "..." } khi lỗi
+        throw new Error(data.message || "Đăng nhập Google thất bại");
       }
 
-      // Backend Google Login trả về 'accessToken' thay vì 'token', nên cần lấy đúng trường
-      const tokenToSave = data.accessToken || data.token;
-
-      if (tokenToSave) {
-        await AsyncStorage.setItem("userToken", tokenToSave);
+      // ĐỒNG BỘ LOGIC LƯU TRỮ:
+      // Backend mới đã trả về trường 'token' giống login thường
+      if (data.token && data.user) {
+        await AsyncStorage.setItem("userToken", data.token);
         await AsyncStorage.setItem("userData", JSON.stringify(data.user));
+
+        // Cập nhật profile đồng bộ
+        dispatch(updateProfile(data.user));
       }
 
-      dispatch(updateProfile(data.user));
-
-      return data;
+      return data; // Trả về { token, user }
     } catch (error: any) {
       return rejectWithValue(error.message);
     }
