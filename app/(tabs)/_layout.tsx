@@ -52,7 +52,16 @@ export default function TabLayout() {
         options={{
           title: "Course",
           tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="course.fill" color={color} />
+            <FontAwesome6 size={24} name="graduation-cap" color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="practices"
+        options={{
+          title: "Practices",
+          tabBarIcon: ({ color }) => (
+            <FontAwesome6 size={24} name="pencil" color={color} />
           ),
         }}
       />
