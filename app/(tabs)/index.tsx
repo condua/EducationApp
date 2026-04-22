@@ -62,7 +62,7 @@ export default function HomeScreen() {
   } else if (currentHour >= 12 && currentHour < 18) {
     greeting = "Chào buổi chiều";
   } else {
-    greeting = "Chào buổi tối"; // Từ 18h đến trước 5h sáng
+    greeting = "Chào buổi tối"; // Từ 18h đến trước 5h sáng ---
   }
   // Lọc khóa học dựa theo API trả về (Lưu ý: chuyển text về chữ thường để so sánh chính xác)
   const filteredCourses =
