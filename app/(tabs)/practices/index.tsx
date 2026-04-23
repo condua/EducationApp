@@ -15,14 +15,20 @@ const cardWidth = (width - 48) / 2;
 
 // Dữ liệu mẫu về các danh mục môn học
 const subjectCategories = [
-  { id: "1", title: "Tiếng Anh", icon: "language", courses: "12 chủ đề" },
+  {
+    id: "1",
+    title: "Tiếng Anh",
+    icon: "language",
+    courses: "12 chủ đề",
+    slug: "english",
+  },
   { id: "2", title: "Toán Học", icon: "calculator", courses: "8 chủ đề" },
   { id: "3", title: "Lập Trình", icon: "code-slash", courses: "15 chủ đề" },
-  { id: "4", title: "Hóa Học", icon: "flask", courses: "6 chủ đề" },
-  { id: "5", title: "Vật Lý", icon: "magnet", courses: "7 chủ đề" },
-  { id: "6", title: "Ngữ Văn", icon: "book", courses: "10 chủ đề" },
-  { id: "7", title: "Sinh Học", icon: "leaf", courses: "5 chủ đề" },
-  { id: "8", title: "Địa Lý", icon: "earth", courses: "4 chủ đề" },
+  // { id: "4", title: "Hóa Học", icon: "flask", courses: "6 chủ đề" },
+  // { id: "5", title: "Vật Lý", icon: "magnet", courses: "7 chủ đề" },
+  // { id: "6", title: "Ngữ Văn", icon: "book", courses: "10 chủ đề" },
+  // { id: "7", title: "Sinh Học", icon: "leaf", courses: "5 chủ đề" },
+  // { id: "8", title: "Địa Lý", icon: "earth", courses: "4 chủ đề" },
 ];
 
 export default function PracticesScreen() {
@@ -33,8 +39,8 @@ export default function PracticesScreen() {
       style={styles.card}
       activeOpacity={0.7}
       onPress={() => {
-        console.log(`Đang chuyển đến môn: ${item.title}`);
-        // router.push(`/Practices/${item.id}`);
+        console.log(`Đang chuyển đến môn: ${item.slug}`);
+        router.push(`/practices/${item.slug}`);
       }}
     >
       <View style={styles.iconContainer}>
