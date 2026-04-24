@@ -6,5 +6,5 @@ import tenses from './tenses.json';
 export const grammarModules: { [key: string]: any } = {
   tenses,
 //   conditionals,
-  // Thêm các key tương ứng với ID của chủ đề
+  // Thêm các key tương ứng với ID của chủ đề khác
 };
